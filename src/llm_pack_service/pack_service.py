@@ -96,13 +96,6 @@ async def llm_chat(messages: List[Dict], provider: Provider):
         raise ValueError(f"Unsupported provider: {provider}. Supported providers are: {', '.join(p.value for p in Provider)}.")
 
 
-@app.post("/llm_streaming_chat")
-async def llm_streaming_chat(messages: List[Dict], provider: Provider):
-    return StreamingResponse(
-        llm_streaming_chat_generator(messages, provider),
-        media_type="application/json"
-    )
-
 async def llm_streaming_chat_generator(messages: List[Dict], provider: Provider):
     """对外提供大模型聊天服务
 
@@ -131,8 +124,6 @@ async def llm_streaming_chat_generator(messages: List[Dict], provider: Provider)
             "Authorization": f"Bearer {Token.DEEPSEEK.value}"
         }
         model = "deepseek-chat"
-        # Log messages and provider
-        print(f"Messages: {messages}, Provider: {provider}")
         data = {
             "model": model,
             "messages": messages,
@@ -143,10 +134,22 @@ async def llm_streaming_chat_generator(messages: List[Dict], provider: Provider)
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
             async for chunk in response.aiter_lines():
-                if chunk:
-                    chunk_data = json.loads(chunk)
+                if not chunk.strip() or not chunk.startswith('data:'):
+                    continue
+                chunk_content = chunk.strip().removeprefix('data: ')
+                if chunk_content == "[DONE]":
+                    break
+                try:
+                    chunk_data = json.loads(chunk_content)
                     if 'choices' in chunk_data and chunk_data['choices']:
-                        yield chunk_data['choices'][0]['delta']
+                        result = json.dumps(chunk_data['choices'][0]['delta'], ensure_ascii=False)+"\n"
+                        logging.info(f"Yielding chunk: {result}")
+                        yield result
+                    else:
+                        logging.warning(f"Unexpected chunk format: {chunk_data}")
+                except json.JSONDecodeError as e:
+                    logging.warning(f"Failed to parse chunk: {chunk}, error: {e}")
+                    continue
         
     elif provider == Provider.DOUBAO.value:
         url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
@@ -163,14 +166,47 @@ async def llm_streaming_chat_generator(messages: List[Dict], provider: Provider)
         }
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
             response = await client.post(url, headers=headers, json=data)
-            async for chunk in response.aiter_bytes():
-                if chunk:
-                    chunk_data = json.loads(chunk.decode('utf-8'))
-                    yield chunk_data['choices'][0]['delta']
+            response.raise_for_status()
+            async for chunk in response.aiter_lines():
+                if not chunk.strip() or not chunk.startswith('data:'):
+                    continue
+                chunk_content = chunk.strip().removeprefix('data: ')
+                if chunk_content == "[DONE]":
+                    break
+                try:
+                    chunk_data = json.loads(chunk_content)
+                    if 'choices' in chunk_data and chunk_data['choices']:
+                        yield json.dumps(chunk_data['choices'][0]['delta'], ensure_ascii=False)+"\n"
+                    else:
+                        logging.warning(f"Unexpected chunk format: {chunk_data}")
+                except json.JSONDecodeError as e:
+                    logging.warning(f"Failed to parse chunk: {chunk}, error: {e}")
+                    continue
         
     else:
         raise ValueError(f"Unsupported provider: {provider}. Supported providers are: {', '.join(p.value for p in Provider)}.")
+    
+    
+@app.post("/llm_streaming_chat")
+async def llm_streaming_chat(messages: List[Dict], provider: Provider):
+    # Log messages and provider
+    print(f"Messages: {messages}, Provider: {provider}")
+    
+    async def logging_generator():
+        async for chunk in llm_streaming_chat_generator(messages, provider):
+            logging.info(f"Sending chunk to client: {chunk}")
+            yield chunk
+    
+    return StreamingResponse(
+        logging_generator(),
+        media_type="application/json"
+    )
 
 if __name__ == "__main__":
     import uvicorn
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     uvicorn.run(app, host="0.0.0.0", port=8808, log_level="info")
