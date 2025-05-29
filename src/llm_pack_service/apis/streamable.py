@@ -6,7 +6,7 @@ import httpx
 import json
 import logging
 
-from ..utils import Provider, Token  # Import from parent module
+from .utils import Provider, Token  # Import from parent module
 
 router = APIRouter(prefix="/streamable", tags=["流式APIs"])
 
@@ -33,7 +33,7 @@ async def chat(messages: List[Dict], provider: Provider):
     """
     
     # Log messages and provider
-    print(f"Messages: {messages}, Provider: {provider}")
+    logging.info(f"Messages: {messages}, Provider: {provider}")
     
     return StreamingResponse(
         chat_generator(messages, provider),
@@ -54,7 +54,7 @@ async def chat_generator(messages: List[Dict], provider: Provider):
             "messages": messages,
             "stream": True  # Set stream to true for streaming response
         }
-        print(f"Request data: {data}")
+        logging.info(f"Request data: {data}")
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
@@ -89,6 +89,7 @@ async def chat_generator(messages: List[Dict], provider: Provider):
             "messages": messages,
             "stream": True  # Set stream to true for streaming response
         }
+        logging.info(f"Request data: {data}")
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()

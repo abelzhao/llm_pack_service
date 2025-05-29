@@ -5,7 +5,7 @@ import httpx
 import json
 import logging
 
-from ..utils import Provider, Token  # Import from parent module
+from .utils import Provider, Token  # Import from parent module
 
 router = APIRouter(prefix="/nonstream", tags=["非流式APIs"])
 
@@ -42,13 +42,13 @@ async def chat(messages: List[Dict], provider: Provider):
         }
         model = "deepseek-chat"
         # Log messages and provider
-        print(f"Messages: {messages}, Provider: {provider}")
+        logging.info(f"Messages: {messages}, Provider: {provider}")
         data = {
             "model": model,
             "messages": messages,
             "stream": False  # Set stream to false for non-streaming response
         }
-        print(f"Request data: {data}")
+        logging.info(f"Request data: {data}")
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
