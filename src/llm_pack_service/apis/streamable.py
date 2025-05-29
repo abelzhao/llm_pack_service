@@ -92,32 +92,35 @@ async def chat_generator(messages: List[Dict], provider: Provider):
                         if new_chunk:
                             logging.info("new chunk:\n"+new_chunk)
                             yield new_chunk
-            except httpx.ReadTimeout:
-                logging.error("请求超时，请重试")
-                yield f"data: {DONE_MARKER}"
-            except httpx.RequestError as e:
-                logging.error(f"网络错误: {e}")
+            except Exception as e:
+                logging.error(f"未知错误: {e}")
                 yield f"data: {DONE_MARKER}"
         
     elif provider == Provider.DOUBAO.value:
         url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
         headers = {
             "Content-Type": "application/json",
-            'Accept': 'application/json',
             "Authorization": f"Bearer {Token.DOUBAO.value}"
         }
-        model = "Doubao-1.5-pro-32k-250115"
+        model = "doubao-1.5-pro-32k-250115"
         data = {
             "model": model,
             "messages": messages,
-            "stream": True  # Set stream to true for streaming response
+            "stream": True
         }
-        # logging.info(f"Request data: {data}")
+        logging.info(f"Request data:\n{data}\n")
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
-            response = await client.post(url, headers=headers, json=data)
-            # response.raise_for_status()
-            async for chunk in response.aiter_raw():
-                yield chunk
+            try:
+                async with client.stream("POST", url, headers=headers, json=data) as response:
+                    response.raise_for_status()
+                    async for chunk in response.aiter_lines():
+                        new_chunk = trans_chunk(chunk)
+                        if new_chunk:
+                            logging.info("new chunk:\n"+new_chunk)
+                            yield new_chunk
+            except Exception as e:
+                logging.error(f"未知错误: {e}")
+                yield f"data: {DONE_MARKER}"
         
     else:
         raise ValueError(f"Unsupported provider: {provider}. Supported providers are: {', '.join(p.value for p in Provider)}.")
