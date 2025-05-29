@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  llm-pack-service:
+    build: .
+    ports:
+      - "8808:8808"
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DOUBAO_API_KEY=${DOUBAO_API_KEY}
+    restart: unless-stopped
