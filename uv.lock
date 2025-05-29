@@ -166,7 +166,7 @@ wheels = [
 [[package]]
 name = "llm-pack-service"
 version = "0.1.1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },

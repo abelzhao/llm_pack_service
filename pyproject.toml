@@ -1,7 +1,7 @@
 [project]
 name = "llm-pack-service"
 version = "0.1.1"
-description = "Add your description here"
+description = "integrate the apis of different llm to one api, which means: large language model package service"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,3 +12,14 @@ dependencies = [
     "requests>=2.32.3",
     "uvicorn>=0.34.2",
 ]
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+llm-pack = "llm_pack_service.pack_service:main"
+
