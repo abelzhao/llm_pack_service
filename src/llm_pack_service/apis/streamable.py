@@ -67,7 +67,7 @@ def trans_chunk(chunk: str) -> str:
 
 async def chat_generator(messages: List[Dict], provider: Provider):
     if provider == Provider.DEEPSEEK.value:
-        url = "https://api.deepseek.com/chat/completions"
+        url = "https://api.deepseek.com/v1/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {Token.DEEPSEEK.value}"
