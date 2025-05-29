@@ -1,6 +1,11 @@
 from enum import Enum
 from fastapi import FastAPI
 import logging
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv('../../.env')
 
 from llm_pack_service.apis import nonstream, streamable
 
@@ -18,6 +23,10 @@ async def health_check():
     return {"status": "healthy"}
 
 def main():
+    # Verify environment variables loaded
+    logging.info(f"DEEPSEEK_API_KEY loaded: {'yes' if os.getenv('DEEPSEEK_API_KEY') else 'no'}")
+    logging.info(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")
+    
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
