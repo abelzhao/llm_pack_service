@@ -9,6 +9,8 @@ from fastapi import HTTPException
 
 from .utils import Provider, Token  # Import from parent module
 
+DONE_MARKER = "[DONE]"
+
 router = APIRouter(prefix="/streamable", tags=["流式APIs"])
 
 @router.post("/chat")
@@ -50,8 +52,10 @@ async def chat(messages: List[Dict], provider: Provider):
 def trans_chunk(chunk: str) -> str:
     """转换chunk为字符串"""
     try:
-        if not chunk.strip() or chunk.strip() == "data: [DONE]":
+        if not chunk.strip():
             return ""
+        if chunk.strip() == f"data: {DONE_MARKER}":
+            return f"data: {DONE_MARKER}"
         if chunk.startswith("data: "):
             chunk = chunk[6:]
         chunk_data = json.loads(chunk)
@@ -81,7 +85,7 @@ async def chat_generator(messages: List[Dict], provider: Provider):
         logging.info(f"Request data:\n{data}\n")
         async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
             try:
-                async with client.stream("POST", url, json=data) as response:
+                async with client.stream("POST", url, headers=headers, json=data) as response:
                     response.raise_for_status()
                     async for chunk in response.aiter_lines():
                         new_chunk = trans_chunk(chunk)
@@ -90,10 +94,10 @@ async def chat_generator(messages: List[Dict], provider: Provider):
                             yield new_chunk
             except httpx.ReadTimeout:
                 logging.error("请求超时，请重试")
-                yield f"data: [Done]\n\n"
+                yield f"data: {DONE_MARKER}"
             except httpx.RequestError as e:
                 logging.error(f"网络错误: {e}")
-                yield f"data: [Done]\n\n"
+                yield f"data: {DONE_MARKER}"
         
     elif provider == Provider.DOUBAO.value:
         url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
