@@ -55,13 +55,13 @@ def trans_chunk(chunk: str) -> str:
         if not chunk.strip():
             return ""
         if chunk.strip() == f"data: {DONE_MARKER}":
-            return f"data: {DONE_MARKER}"
+            return f"{DONE_MARKER}"
         if chunk.startswith("data: "):
             chunk = chunk[6:]
         chunk_data = json.loads(chunk)
         if 'choices' in chunk_data and chunk_data['choices']:
             delta = chunk_data['choices'][0].get('delta', {})
-            return f"data: {json.dumps(delta, ensure_ascii=False)}\n\n"
+            return f"{json.dumps(delta, ensure_ascii=False)}\n\n"
         else:
             logging.warning(f"Unexpected chunk format: {chunk_data}")
             return ""
@@ -94,7 +94,7 @@ async def chat_generator(messages: List[Dict], provider: Provider):
                             yield new_chunk
             except Exception as e:
                 logging.error(f"未知错误: {e}")
-                yield f"data: {DONE_MARKER}"
+                yield f"{DONE_MARKER}"
         
     elif provider == Provider.DOUBAO.value:
         url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
@@ -102,7 +102,7 @@ async def chat_generator(messages: List[Dict], provider: Provider):
             "Content-Type": "application/json",
             "Authorization": f"Bearer {Token.DOUBAO.value}"
         }
-        model = "doubao-1.5-pro-32k-250115"
+        model = "deepseek-r1-250120"
         data = {
             "model": model,
             "messages": messages,
@@ -120,7 +120,7 @@ async def chat_generator(messages: List[Dict], provider: Provider):
                             yield new_chunk
             except Exception as e:
                 logging.error(f"未知错误: {e}")
-                yield f"data: {DONE_MARKER}"
+                yield f"{DONE_MARKER}"
         
     else:
         raise ValueError(f"Unsupported provider: {provider}. Supported providers are: {', '.join(p.value for p in Provider)}.")

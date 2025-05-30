@@ -61,7 +61,7 @@ async def chat(messages: List[Dict], provider: Provider):
             'Accept': 'application/json',
             "Authorization": f"Bearer {Token.DOUBAO.value}"
         }
-        model = "doubao-1.5-pro-32k-250115"
+        model = "deepseek-r1-250120" # "doubao-1.5-pro-32k-250115"
         data = {
             "model": model,
             "messages": messages,
