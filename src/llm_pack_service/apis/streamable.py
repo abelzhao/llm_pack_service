@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Dict
 from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 import httpx
 import json
 import logging
@@ -14,19 +14,21 @@ DONE_MARKER = "[DONE]"
 router = APIRouter(prefix="/streamable", tags=["流式APIs"])
 
 @router.post("/chat")
-async def chat(messages: List[Dict], provider: Provider):
+async def chat(messages: List[Dict], model:str, reason:bool, provider: Provider) -> StreamingResponse:
     """对外提供大模型聊天服务
 
     Args:
         messages (List[Dict]): 聊天的消息结构体
+        mode str: 聊天的消息结构体
+        reason bool: 聊天的消息结构体
         provider (str): 大模型提供商
     Returns:
         返回list响应 (AsyncGenerator[Dict, None])
     例如:
         {
             "messages": [
-                {"role": "user", "content": "Hello"},
-                {"role": "assistant", "content": "Hi there!"}
+                {"role": "system", "content": "你的角色是产品经理"},
+                {"role": "user", "content": "请自我介绍下"}
             ],
             "provider": "deepseek"
         }
@@ -39,7 +41,7 @@ async def chat(messages: List[Dict], provider: Provider):
     logging.info(f"Messages: {messages}, Provider: {provider}")
     
     return StreamingResponse(
-        chat_generator(messages, provider),
+        chat_generator(messages, model, reason, provider),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -69,14 +71,14 @@ def trans_chunk(chunk: str) -> str:
         logging.warning(f"Failed to parse chunk: {chunk}, error: {e}")
         return ""
 
-async def chat_generator(messages: List[Dict], provider: Provider):
+async def chat_generator(messages: List[Dict], model:str, reason:bool, provider: Provider):
     if provider == Provider.DEEPSEEK.value:
         url = "https://api.deepseek.com/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {Token.DEEPSEEK.value}"
         }
-        model = "deepseek-chat"
+        # model = "deepseek-chat"
         data = {
             "model": model,
             "messages": messages,
@@ -102,7 +104,7 @@ async def chat_generator(messages: List[Dict], provider: Provider):
             "Content-Type": "application/json",
             "Authorization": f"Bearer {Token.DOUBAO.value}"
         }
-        model = "deepseek-r1-250120"
+        # model = "deepseek-r1-250120"
         data = {
             "model": model,
             "messages": messages,

@@ -7,12 +7,13 @@ import os
 # Load environment variables from .env file
 load_dotenv('../../.env')
 
-from llm_pack_service.apis import nonstream, streamable
+from llm_pack_service.apis import nonstream, streamable, chat
 
 app = FastAPI(title="LLM Pack Service")
 
 app.include_router(nonstream.router)
 app.include_router(streamable.router)
+app.include_router(chat.router)
 
 @app.get("/")
 async def root():
