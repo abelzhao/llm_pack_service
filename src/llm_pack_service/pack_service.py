@@ -1,11 +1,7 @@
 from enum import Enum
 from fastapi import FastAPI
 import logging
-from dotenv import load_dotenv
 import os
-
-# Load environment variables from .env file
-load_dotenv('../../.env')
 
 from llm_pack_service.apis import nonstream, streamable, chat
 

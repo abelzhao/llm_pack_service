@@ -6,8 +6,8 @@ services:
     ports:
       - "8808:8808"
     working_dir: /app
+    env_file:
+      - .env
     environment:
       - PYTHONUNBUFFERED=1
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - DOUBAO_API_KEY=${DOUBAO_API_KEY}
-    restart: unless-stopped
+    restart: always

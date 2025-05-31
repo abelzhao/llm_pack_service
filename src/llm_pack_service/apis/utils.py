@@ -17,5 +17,5 @@ def get_env_token(key_name: str) -> str:
     return token
 
 class Token(str, Enum):
-    DEEPSEEK = "sk-f805d0e28516492ab3a9b6c732c1e498" #get_env_token("DEEPSEEK_API_KEY")
-    DOUBAO = "4bbc2539-be5c-4838-96dc-1b943f65967a" # get_env_token("DOUBAO_API_KEY")
+    DEEPSEEK = get_env_token("DEEPSEEK_API_KEY")
+    DOUBAO = get_env_token("DOUBAO_API_KEY")

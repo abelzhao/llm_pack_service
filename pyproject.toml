@@ -1,6 +1,6 @@
 [project]
 name = "llm-pack-service"
-version = "0.1.1"
+version = "0.1.2"
 description = "integrate the apis of different llm to one api, which means: large language model package service"
 readme = "README.md"
 requires-python = ">=3.11"

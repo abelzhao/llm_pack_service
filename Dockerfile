@@ -4,14 +4,6 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Build arguments for tokens
-ARG DEEPSEEK_TOKEN
-ARG DOUBAO_TOKEN
-
-# Environment variables
-ENV DEEPSEEK_API_KEY=${DEEPSEEK_TOKEN}
-ENV DOUBAO_API_KEY=${DOUBAO_TOKEN}
-
 # Copy project files
 COPY . .
 
@@ -23,4 +15,4 @@ RUN pip install uv && \
 EXPOSE 8808
 
 # Run the application
-CMD ["python", "-m", "llm_pack_service"]
+CMD ["uvicorn", "llm_pack_service:app", "--host", "0.0.0.0", "--port", "8808"]

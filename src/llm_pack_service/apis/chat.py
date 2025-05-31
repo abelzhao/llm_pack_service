@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Dict, Union
+from typing import List, Dict, Union, AsyncGenerator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, Response
 import httpx
@@ -13,27 +13,27 @@ DONE_MARKER = "[DONE]"
 
 router = APIRouter(prefix="/api/v1", tags=["对话"])
 
-def trans_chunk(chunk: str) -> str:
+def trans_chunk(chunk: str) -> Union[Dict, str]:
     """转换chunk为字符串"""
     try:
         if not chunk.strip():
             return ""
         if chunk.strip() == f"data: {DONE_MARKER}":
-            return json.dumps({"isDone":True})
+            return {"isDone":True}
         if chunk.startswith("data: "):
             chunk = chunk[6:]
         chunk_data = json.loads(chunk)
         if 'choices' in chunk_data and chunk_data['choices']:
             delta = chunk_data['choices'][0].get('delta', {})
-            return f"{json.dumps(delta, ensure_ascii=False)}\n\n"
+            return delta
         else:
             logging.warning(f"Unexpected chunk format: {chunk_data}")
             return ""
     except json.JSONDecodeError as e:
         logging.warning(f"Failed to parse chunk: {chunk}, error: {e}")
         return ""
-    
-async def stream_generator(url: str, headers: Dict, data: Dict):
+
+async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerator[str, None]:
     """流生成器
 
     Args:
@@ -50,12 +50,15 @@ async def stream_generator(url: str, headers: Dict, data: Dict):
     async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
         async with client.stream("POST", url, headers=headers, json=data) as response:
             response.raise_for_status()
+            role = ""
             async for chunk in response.aiter_lines():
                 new_chunk = trans_chunk(chunk)
                 if new_chunk:
-                    yield new_chunk
-                    
-async def nonstream_generator(url: str, headers: Dict, data: Dict):
+                    role = new_chunk.get("role", role)
+                    new_chunk["role"] = role
+                    yield json.dumps(new_chunk)
+
+async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
     """非流生成器
 
     Args:
@@ -129,7 +132,7 @@ async def chat(messages: List[Dict], provider: Provider, stream: bool, model: st
                 "code": 1,
                 "msg": "success",
                 "data": data,
-                "status":200
+                "status": 200
             }
             return Response(
                 json.dumps(json_data),
@@ -143,11 +146,3 @@ async def chat(messages: List[Dict], provider: Provider, stream: bool, model: st
                 status_code=404,
                 media_type='application/json'
             )
-    
-    
-    
-
-        
-        
-    
-    
