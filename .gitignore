@@ -11,5 +11,4 @@ wheels/
 .vscode
 
 # Environment variables
-.env
 .env.local
