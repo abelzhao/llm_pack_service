@@ -1,6 +1,7 @@
 from enum import Enum
 import os
 from typing import Optional
+import json
 
 class Provider(str, Enum):
     DEEPSEEK = "deepseek"
@@ -22,10 +23,10 @@ class Token(str, Enum):
     
     
 class Url(str, Enum):
-    DEEPSEEK = get_env_token("DEEPSEEK_API_URL") or "https://api.deepseek.com/chat/completions"
-    DOUBAO = get_env_token("DOUBAO_API_URL") or "https://api.doubao.com/chat/completions"
+    DEEPSEEK = get_env_token("DEEPSEEK_API_URL")
+    DOUBAO = get_env_token("DOUBAO_API_URL")
     
     
 class Model(str, Enum):
-    DEEPSEEK = get_env_token("DEEPSEEK_MODEL").split(",") or ["deepseek-chat"]
-    DOUBAO = get_env_token("DOUBAO_MODEL").split(",") or ["deepseek-r1-250528"]
+    DEEPSEEK = get_env_token("DEEPSEEK_MODEL").split(",")
+    DOUBAO = get_env_token("DOUBAO_MODEL").split(",")
