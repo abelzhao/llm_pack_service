@@ -8,7 +8,7 @@ from llm_pack_service.apis import nonstream, streamable, chat
 
 # Configure logging for entire application
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.ERROR,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
@@ -34,7 +34,7 @@ def main():
     
     logging.info("Starting llm-pack-service...")
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8808, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=8808, log_level="error")
 
 
 if __name__ == "__main__":

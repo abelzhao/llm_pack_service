@@ -144,6 +144,20 @@ async def chat(messages: List[Dict], provider: str, stream: bool, model: str, re
             media_type=JSON_MEDIA_TYPE
         )
     
+    if (provider == Provider.DEEPSEEK.value and not reason and "reasoner" in model) or \
+        (provider == Provider.DOUBAO.value and not reason and "r1" in model):
+        json_data = {
+            "code": 0,
+            "msg": f"{model} 支持了推理模式",
+            "data": {},
+            "status": 404
+        }
+        return Response(
+            json.dumps(json_data),
+            status_code=200,
+            media_type=JSON_MEDIA_TYPE
+        )
+    
     if stream:
         try:
             return StreamingResponse(
