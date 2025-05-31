@@ -13,7 +13,7 @@ DONE_MARKER = "[DONE]"
 
 router = APIRouter(prefix="/streamable", tags=["流式APIs"])
 
-@router.post("/chat")
+@router.post("/chat", deprecated=True)
 async def chat(messages: List[Dict], model:str, reason:bool, provider: Provider) -> StreamingResponse:
     """对外提供大模型聊天服务
 

@@ -1,17 +1,14 @@
-# Use official Python 3.11 image
-FROM python:3.11-slim
+FROM python:3.11-slim as builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY . .
+# Copy all files needed for build
+COPY . /app/
 
-# Install dependencies using uv pip
-RUN pip install uv && \
-    uv pip install -e .
+# Install dependencies
+RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ . 
 
-# Expose the application port
+# Expose application port
 EXPOSE 8808
 
 # Run the application

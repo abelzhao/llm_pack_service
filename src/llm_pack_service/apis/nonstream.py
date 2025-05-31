@@ -10,7 +10,7 @@ from .utils import Provider, Token  # Import from parent module
 
 router = APIRouter(prefix="/nonstream", tags=["非流式APIs"])
 
-@router.post("/chat")
+@router.post("/chat", deprecated=True)
 async def chat(messages: List[Dict], model:str, reason:bool, provider: Provider) -> Response:
     """对外提供大模型聊天服务
 
