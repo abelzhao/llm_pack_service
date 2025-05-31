@@ -6,7 +6,7 @@ import json
 import logging
 from fastapi.responses import Response
 
-from .utils import Provider, Token  # Import from parent module
+from .utils import Provider, Token, Model  # Import from parent module
 
 router = APIRouter(prefix="/nonstream", tags=["非流式APIs"])
 

@@ -7,7 +7,7 @@ import json
 import logging
 from fastapi import HTTPException
 
-from .utils import Provider, Token  # Import from parent module
+from .utils import Provider, Token, Url, Model  # Import from parent module
 
 DONE_MARKER = "[DONE]"
 
@@ -41,11 +41,8 @@ async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerato
         headers (Dict): 请求头
         data (Dict): 请求数据
 
-    Returns:
-        _type_: _description_
-
     Yields:
-        _type_: _description_
+        str: streaming response in JSON format
     """
     async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
         async with client.stream("POST", url, headers=headers, json=data) as response:
@@ -67,14 +64,11 @@ async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
         data (Dict): 请求数据
 
     Returns:
-        _type_: _description_
+        Dict: 封装的json回答
 
-    Yields:
-        _type_: _description_
     """
     async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
         response = await client.post(url, headers=headers, json=data)
-        # async with client.post(url, headers=headers, json=data) as response:
         response.raise_for_status()
         data = response.json()['choices'][0]['message']
         return data
@@ -94,10 +88,10 @@ async def chat(messages: List[Dict], provider: Provider, stream: bool, model: st
         
     """
     if provider == Provider.DEEPSEEK.value:
-        url = "https://api.deepseek.com/chat/completions"
+        url = Url.DEEPSEEK.value
         token = Token.DEEPSEEK.value
     elif provider == Provider.DOUBAO.value:
-        url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+        url = Url.DOUBAO.value
         token = Token.DOUBAO.value
         
     headers = {
@@ -115,16 +109,23 @@ async def chat(messages: List[Dict], provider: Provider, stream: bool, model: st
     logging.info(f"Request data:\n{data}\n")
     
     if stream:
-        return StreamingResponse(
-            stream_generator(url, headers, data),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",  # 禁用Nginx缓冲
-                "Connection": "keep-alive",
-                "Transfer-Encoding": "chunked"
-            }
-        )
+        try:
+            return StreamingResponse(
+                stream_generator(url, headers, data),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",  # 禁用Nginx缓冲
+                    "Connection": "keep-alive",
+                    "Transfer-Encoding": "chunked"
+                }
+            )
+        except Exception as e:
+            return Response(
+                f"获取数据失败: {e}",
+                status_code=404,
+                media_type='application/json'
+            )
     else:
         try:
             data = await nonstream_generator(url, headers, data)
@@ -146,3 +147,21 @@ async def chat(messages: List[Dict], provider: Provider, stream: bool, model: st
                 status_code=404,
                 media_type='application/json'
             )
+            
+
+@router.get("/chat_model_list") 
+async def chat_model_list() -> Response:
+    """获取模型列表"""
+    return Response(
+        json.dumps({
+            "code": 1,
+            "msg": "success",
+            "data": {
+                "deepseek": Model.DEEPSEEK.value,
+                "doubao": Model.DOUBAO.value
+            },
+            "status": 200
+        }),
+        status_code=200,
+        media_type='application/json'
+    )

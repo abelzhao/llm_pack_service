@@ -2,8 +2,16 @@ from enum import Enum
 from fastapi import FastAPI
 import logging
 import os
+import sys
 
 from llm_pack_service.apis import nonstream, streamable, chat
+
+# Configure logging for entire application
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 
 app = FastAPI(title="LLM Pack Service")
 
@@ -24,10 +32,6 @@ def main():
     logging.info(f"DEEPSEEK_API_KEY loaded: {'yes' if os.getenv('DEEPSEEK_API_KEY') else 'no'}")
     logging.info(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")
     
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
     logging.info("Starting llm-pack-service...")
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8808, log_level="info")

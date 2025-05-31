@@ -19,3 +19,13 @@ def get_env_token(key_name: str) -> str:
 class Token(str, Enum):
     DEEPSEEK = get_env_token("DEEPSEEK_API_KEY")
     DOUBAO = get_env_token("DOUBAO_API_KEY")
+    
+    
+class Url(str, Enum):
+    DEEPSEEK = get_env_token("DEEPSEEK_API_URL") or "https://api.deepseek.com/chat/completions"
+    DOUBAO = get_env_token("DOUBAO_API_URL") or "https://api.doubao.com/chat/completions"
+    
+    
+class Model(str, Enum):
+    DEEPSEEK = get_env_token("DEEPSEEK_MODEL").split(",") or ["deepseek-chat"]
+    DOUBAO = get_env_token("DOUBAO_MODEL").split(",") or ["deepseek-r1-250528"]
