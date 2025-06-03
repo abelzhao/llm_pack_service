@@ -5,7 +5,6 @@ import os
 import sys
 
 from llm_pack_service.apis import chat, audio
-from build.lib.llm_pack_service.pack_service import app
 
 # Configure logging for entire application
 logging.basicConfig(

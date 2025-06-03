@@ -8,7 +8,7 @@ import json
 import logging
 import ast
 
-from .utils import get_error_response, Model, Provider, Token
+from .utils import get_error_response, Model, Provider, Token, Url
 
 JSON_MEDIA_TYPE = "application/json"
 
@@ -55,7 +55,7 @@ async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerato
                 if new_chunk:
                     role = new_chunk.get("role", role)
                     new_chunk["role"] = role
-                    yield json.dumps(new_chunk)
+                    yield json.dumps(new_chunk)+"\n"
 
 async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
     """非流生成器
