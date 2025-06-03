@@ -4,11 +4,12 @@ import logging
 import os
 import sys
 
-from llm_pack_service.apis import nonstream, streamable, chat
+from llm_pack_service.apis import chat, audio
+from build.lib.llm_pack_service.pack_service import app
 
 # Configure logging for entire application
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
@@ -16,6 +17,7 @@ logging.basicConfig(
 app = FastAPI(title="LLM Pack Service")
 
 app.include_router(chat.router)
+app.include_router(audio.router)
 
 @app.get("/")
 async def root():
@@ -32,7 +34,8 @@ def main():
     
     logging.info("Starting llm-pack-service...")
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8808, log_level="error")
+    uvicorn.run(app, host="0.0.0.0", port=8808, log_level="info")
+    logging.info("llm-pack-service started successfully.")
 
 
 if __name__ == "__main__":

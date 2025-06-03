@@ -2,13 +2,13 @@ from enum import Enum
 from typing import List, Dict, Union, AsyncGenerator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, Response
+from fastapi import HTTPException
 import httpx
 import json
 import logging
-from fastapi import HTTPException
 import ast
 
-from .utils import Provider, Token, Url, Model  # Import from parent module
+from .utils import get_error_response, Model, Provider, Token
 
 JSON_MEDIA_TYPE = "application/json"
 
@@ -75,19 +75,7 @@ async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
         data = response.json()['choices'][0]['message']
         return data
     
-def get_error_response(message: str) -> Response:
-    """生成错误响应"""
-    json_data = {
-        "code": 0,
-        "msg": message,
-        "data": {},
-        "status": 404
-    }
-    return Response(
-        json.dumps(json_data),
-        status_code=200,
-        media_type=JSON_MEDIA_TYPE
-    )
+
 
 @router.post("/chat", response_model=None)
 async def chat(messages: List[Dict], provider: str, stream: bool, model: str, reason:bool) -> Union[StreamingResponse, Response]:

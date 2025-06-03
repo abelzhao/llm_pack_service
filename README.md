@@ -29,6 +29,12 @@ or
 uv run llm-pack
 ```
 
+or
+
+```
+uvicorn llm_pack_service.pack_service:app --host 0.0.0.0 --port 8808 --reload
+ ```
+
 ### API Endpoints
 
 - `/chat`: Main chat endpoint supporting both streaming and non-streaming responses
