@@ -20,7 +20,7 @@ def submit_task():
 
     request = {
         "user": {
-            "uid": "fake_uid"
+            "uid": "2101349786"
         },
         "audio": {
             "url": file_url,
@@ -46,8 +46,10 @@ def submit_task():
             }
         }
     }
-    print(f'Submit task id: {task_id}')
+    print(f'Submit task headers: \n{headers}')
+    print(f'Submit task request: \n{json.dumps(request, indent=2)}\n')
     response = requests.post(submit_url, data=json.dumps(request), headers=headers)
+    print(f'Submit task response headers: \n{response.headers}\n')
     if 'X-Api-Status-Code' in response.headers and response.headers["X-Api-Status-Code"] == "20000000":
         print(f'Submit task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
         print(f'Submit task response header X-Api-Message: {response.headers["X-Api-Message"]}')
@@ -55,7 +57,7 @@ def submit_task():
         print(f'Submit task response header X-Tt-Logid: {response.headers["X-Tt-Logid"]}\n')
         return task_id, x_tt_logid
     else:
-        print(f'Submit task failed and the response headers are: {response.headers}')
+        print('\nSubmit task failed\n')
         exit(1)
     return task_id
 

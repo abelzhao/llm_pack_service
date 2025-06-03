@@ -42,22 +42,25 @@ async def temp_mp3(request: Request, file_name: str = "./test/output.mp3") -> Un
     
 async def submit_task(request_data: Dict[str, Union[str, Dict, list]]):
     """提交语音任务"""
-    submit_url = os.getenv("DOUBAO_AUC_API_SUBMIT_URL")
+    submit_url = os.getenv("DOUBAO_AUC_API_SUBMIT_URL", "https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit")
+    logging.info(f'submit_url: {submit_url}')
 
     task_id = str(uuid.uuid4())
     
     headers = {
-        "X-Api-App-Key": os.getenv("X_Api_App_Id"),
-        "X-Api-Access-Key": os.getenv("X_Api_Access_Token"),
+        "X-Api-App-Key": os.getenv("X_Api_App_Id", "5722492847"),
+        "X-Api-Access-Key": os.getenv("X_Api_Access_Token", "yI2H5ccfp_oP8kgtDLtAUtLhPiDpdKd0"),
         "X-Api-Resource-Id": "volc.bigasr.auc",
         "X-Api-Request-Id": task_id,
         "X-Api-Sequence": "-1"
     }
     
-    logging.info(f'Submit task id: {task_id}')
+    logging.info(f'Submit task request headers: \n{json.dumps(headers, indent=2)}\n')
+    logging.info(f'Submit task request data: \n{json.dumps(request_data, indent=2)}\n')
     
     async with httpx.AsyncClient() as client:
         response = await client.post(submit_url, json=json.dumps(request_data), headers=headers)
+        print(f'Submit task response headers: \n{response.headers}\n')
         if 'X-Api-Status-Code' in response.headers and response.headers["X-Api-Status-Code"] == "20000000":
             logging.info(f'Submit task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
             logging.info(f'Submit task response header X-Api-Message: {response.headers["X-Api-Message"]}')
@@ -65,17 +68,17 @@ async def submit_task(request_data: Dict[str, Union[str, Dict, list]]):
             logging.info(f'Submit task response header X-Tt-Logid: {x_tt_logid}\n')
             return task_id, x_tt_logid
         else:
-            logging.info(f'Submit task failed and the response headers are: {response.headers}')
+            print('\nSubmit task failed\n')
             raise TaskSubmissionError("Task submission failed: X-Api-Status-Code not in response headers")
-            
+    
     return task_id
 
 
 async def query_task(task_id, x_tt_logid):
-    query_url = os.getenv("DOUBAO_AUC_API_QUERY_URL")
+    query_url = os.getenv("DOUBAO_AUC_API_QUERY_URL", "https://openspeech.bytedance.com/api/v3/auc/bigmodel/query")
     headers = {
-        "X-Api-App-Key": os.getenv("X_Api_App_Id"),
-        "X-Api-Access-Key": os.getenv("X_Api_Access_Token"),
+        "X-Api-App-Key": os.getenv("X_Api_App_Id", "5722492847"),
+        "X-Api-Access-Key": os.getenv("X_Api_Access_Token", "yI2H5ccfp_oP8kgtDLtAUtLhPiDpdKd0"),
         "X-Api-Resource-Id": "volc.bigasr.auc",
         "X-Api-Request-Id": task_id,
         "X-Tt-Logid": x_tt_logid  # 固定传递 x-tt-logid
@@ -110,14 +113,15 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
         return get_error_response(f"Error saving audio file: {str(e)}")
     
     try:
-        temp_audio_url = f"{request.url.scheme}://{request.url.netloc}/api/v1/tw?file_name={temp_audio_path}"
+        # temp_audio_url = f"{request.url.scheme}://{request.url.netloc}/api/v1/tw?file_name={temp_audio_path}"
+        temp_audio_url = "http://8.137.149.26:8808/api/v1/tw?file_name=./test/output.mp3"
         logging.info(f"temp_audio_url: {temp_audio_url}")
     except Exception as e:
         return get_error_response(f"Error generating file URL: {str(e)}")
         
     data = {
         "user": {
-            "uid": "fake_uid"
+            "uid": os.getenv("X_Api_App_Uid","2101349786")
         },
         "audio": {
             "url": temp_audio_url,
@@ -130,6 +134,12 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
         "request": {
             "model_name": "bigmodel",
             # Additional parameters can be added here
+            "show_utterances": True,
+            "corpus": {
+                # "boosting_table_name": "test",
+                "correct_table_name": "",
+                "context": ""
+            }
         }
     }
     
