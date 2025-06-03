@@ -5,12 +5,17 @@ description = "integrate the apis of different llm to one api, which means: larg
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "asyncio>=3.4.3",
     "fastapi>=0.95.0", # StreamingResponse was introduced in 0.95.0
     "httpx>=0.28.1",
     "pip>=25.1.1",
     "python-dotenv>=1.1.0",
+    "pyttsx3>=2.98",
     "requests>=2.32.3",
+    "uuid>=1.30",
     "uvicorn>=0.34.2",
+    "wave>=0.0.2",
+    "websockets>=15.0.1",
 ]
 
 [build-system]
