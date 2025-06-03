@@ -15,8 +15,6 @@ logging.basicConfig(
 
 app = FastAPI(title="LLM Pack Service")
 
-app.include_router(nonstream.router)
-app.include_router(streamable.router)
 app.include_router(chat.router)
 
 @app.get("/")
