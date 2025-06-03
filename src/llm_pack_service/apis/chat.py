@@ -8,12 +8,12 @@ import json
 import logging
 import ast
 
-from .utils import get_error_response, Model, Provider, Token, Url
-
-JSON_MEDIA_TYPE = "application/json"
-
+from .utils import Model, Provider, Token, Url
+from .error import get_error_response
 
 router = APIRouter(prefix="/api/v1", tags=["对话"])
+
+JSON_MEDIA_TYPE = "application/json"
 
 def trans_chunk(chunk: str) -> Union[Dict, str]:
     """转换chunk为字符串"""

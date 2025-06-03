@@ -4,19 +4,6 @@ from typing import Optional
 import json
 from fastapi.responses import Response
 
-def get_error_response(message: str) -> Response:
-    """生成错误响应"""
-    json_data = {
-        "code": 0,
-        "msg": message,
-        "data": {},
-        "status": 404
-    }
-    return Response(
-        json.dumps(json_data),
-        status_code=200,
-        media_type="application/json"
-    )
 
 class Provider(str, Enum):
     DEEPSEEK = "deepseek"

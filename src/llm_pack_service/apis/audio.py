@@ -14,18 +14,19 @@ from datetime import datetime
 from io import BytesIO
 import wave
 import tempfile
+import os
 
-from .utils import get_error_response  # Import only needed function
 
-JSON_MEDIA_TYPE = "application/json"
+from .error import get_error_response, TaskSubmissionError, TaskQueryError
 
 router = APIRouter(prefix="/api/v1", tags=["语音"])
+
+JSON_MEDIA_TYPE = "application/json"
 
 @router.get("/tw", response_model=None)
 async def temp_mp3(request: Request, file_name: str = "./test/output.mp3") -> Union[StreamingResponse, Response]:
     """把file_name所在的文件以音频形式返回
     """
-    # 检查file_name是否mp3文件
     if not file_name.endswith('.mp3'):
         return get_error_response("Invalid file type - .mp3 file required")
     try:
@@ -39,51 +40,59 @@ async def temp_mp3(request: Request, file_name: str = "./test/output.mp3") -> Un
         return get_error_response(f"File {file_name} not found")
     
     
-async def submit_task(
-    audio_url: str,
-    model_name: str = "bigmodel",
-    uid: str = "fake_uid"
-) -> Dict:
+async def submit_task(request_data: Dict[str, Union[str, Dict, list]]):
     """提交语音任务"""
-    submit_url = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit"
-    
+    submit_url = os.getenv("DOUBAO_AUC_API_SUBMIT_URL")
+
     task_id = str(uuid.uuid4())
     
     headers = {
-        "X-Api-App-Key": INTERNAL_TOKEN,
-        "X-Api-Access-Key": INTERNAL_TOKEN,
+        "X-Api-App-Key": os.getenv("X_Api_App_Id"),
+        "X-Api-Access-Key": os.getenv("X_Api_Access_Token"),
         "X-Api-Resource-Id": "volc.bigasr.auc",
         "X-Api-Request-Id": task_id,
         "X-Api-Sequence": "-1"
     }
     
-    request_data = {
-        "user": {
-            "uid": uid
-        },
-        "audio": {
-            "url": audio_url,
-            "format": "mp3",
-            "codec": "raw",
-            "rate": 16000,
-            "bits": 16,
-            "channel": 1
-        },
-        "request": {
-            "model_name": model_name,
-            # Additional parameters can be added here
-        }
-    }
+    logging.info(f'Submit task id: {task_id}')
     
     async with httpx.AsyncClient() as client:
-        response = await client.post(submit_url, json=request_data, headers=headers)
-        
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise Exception(f"Failed to submit task: {response.text}")
-    
-    
+        response = await client.post(submit_url, json=json.dumps(request_data), headers=headers)
+        if 'X-Api-Status-Code' in response.headers and response.headers["X-Api-Status-Code"] == "20000000":
+            logging.info(f'Submit task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
+            logging.info(f'Submit task response header X-Api-Message: {response.headers["X-Api-Message"]}')
+            x_tt_logid = response.headers.get("X-Tt-Logid", "")
+            logging.info(f'Submit task response header X-Tt-Logid: {x_tt_logid}\n')
+            return task_id, x_tt_logid
+        else:
+            logging.info(f'Submit task failed and the response headers are: {response.headers}')
+            raise TaskSubmissionError("Task submission failed: X-Api-Status-Code not in response headers")
+            
+    return task_id
+
+
+async def query_task(task_id, x_tt_logid):
+    query_url = os.getenv("DOUBAO_AUC_API_QUERY_URL")
+    headers = {
+        "X-Api-App-Key": os.getenv("X_Api_App_Id"),
+        "X-Api-Access-Key": os.getenv("X_Api_Access_Token"),
+        "X-Api-Resource-Id": "volc.bigasr.auc",
+        "X-Api-Request-Id": task_id,
+        "X-Tt-Logid": x_tt_logid  # 固定传递 x-tt-logid
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(query_url, json.dumps({}), headers=headers)
+        if 'X-Api-Status-Code' in response.headers:
+            logging.info(f'Query task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
+            logging.info(f'Query task response header X-Api-Message: {response.headers["X-Api-Message"]}')
+            logging.info(f'Query task response header X-Tt-Logid: {response.headers["X-Tt-Logid"]}\n')
+        else:
+            logging.info(f'Query task failed and the response headers are: {response.headers}')
+            raise TaskSubmissionError("Task query failed: X-Api-Status-Code not in response headers")        
+        if response.status_code != 200:
+            raise TaskQueryError("Task query failed with non-200 status code")
+        return response
+
 
 @router.post("/auc", response_model=None)
 async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, Response]:
@@ -91,12 +100,11 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
     # Validate audio file
     if not audio.content_type.startswith('audio/'):
         return get_error_response("Invalid file type - audio file required")
-
     # Read audio data
     try:
         audio_data = await audio.read()
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
-            temp_audio.write(audio_data)
+            temp_file.write(audio_data)
             temp_audio_path = temp_file.name
     except Exception as e:
         return get_error_response(f"Error saving audio file: {str(e)}")
@@ -112,7 +120,7 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
             "uid": "fake_uid"
         },
         "audio": {
-            "url": temp_file_url,
+            "url": temp_audio_url,
             "format": "mp3",  # Adjust based on actual audio format
             "codec": "raw",
             "rate": 16000,
@@ -124,18 +132,25 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
             # Additional parameters can be added here
         }
     }
-    return Response(
-        content=json.dumps(data),
-        media_type=JSON_MEDIA_TYPE
-    )
-
-
-    # Process audio data here (placeholder)
-    # You would typically send to a speech recognition service
-    processed_data = audio_data  # Placeholder - replace with actual processing
-
-    # Return streaming response
-    return StreamingResponse(
-        iter([processed_data]),
-        media_type="audio/wav"  # Adjust based on actual output format
-    )
+    
+    try:
+        task_id, x_tt_logid = await submit_task(data)  # 提交任务
+    except TaskSubmissionError as e:
+        return get_error_response(str(e))
+    
+    while True:
+        try:
+            query_response = await query_task(task_id, x_tt_logid)  # 查询任务状态
+            code = query_response.headers.get('X-Api-Status-Code', "")
+            if code == '20000000':
+                logging.info('Query task success')
+                return Response(
+                    content=json.dumps(data),
+                    media_type="application/json"
+                )
+            elif code != '20000001' and code != '20000002':
+                logging.error(f"Task failed with code: {code}")
+                return get_error_response("Task failed")
+            await asyncio.sleep(1)  # 等待一段时间后重试
+        except TaskQueryError as e:
+            return get_error_response(str(e))

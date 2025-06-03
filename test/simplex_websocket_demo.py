@@ -89,7 +89,7 @@ def main():
         query_response = query_task(task_id, x_tt_logid)
         code = query_response.headers.get('X-Api-Status-Code', "")
         if code == '20000000':  # task finished
-            print(query_response.json())
+            print(json.dumps(query_response.json())+"\n")
             print("SUCCESS!")
             exit(0)
         elif code != '20000001' and code != '20000002':  # task failed
@@ -98,7 +98,7 @@ def main():
         time.sleep(1)
 
 # 需要使用在线url，推荐使用TOS
-file_url = ""
+file_url = "http://8.137.149.26:8808/api/v1/tw?file_name=./test/output.mp3"
 # 填入控制台获取的app id和access token
 appid = "5722492847"
 token = "yI2H5ccfp_oP8kgtDLtAUtLhPiDpdKd0"
