@@ -21,10 +21,6 @@ JSON_MEDIA_TYPE = "application/json"
 
 router = APIRouter(prefix="/api/v1", tags=["语音"])
 
-
-X_API_App_Id = "5722492847"
-X_Api_App_Key = "e7d8c9b0-a1f2-4e3d-8c5b-9f0e1d2c3b4a"  # Randomly generated UUID
-
 @router.get("/tw", response_model=None)
 async def temp_mp3(request: Request, file_name: str = "./test/output.mp3") -> Union[StreamingResponse, Response]:
     """把file_name所在的文件以音频形式返回

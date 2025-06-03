@@ -116,7 +116,7 @@ async def chat(messages: List[Dict], provider: str, stream: bool, model: str, re
             "stream": stream
         }
     
-    logging.info(f"Request data:\n{data}\n")
+    # logging.info(f"Request data:\n{data}\n")
     
     if (provider == Provider.DEEPSEEK.value and reason and "reasoner" not in model) or \
         (provider == Provider.DOUBAO.value and reason and "r1" not in model):
