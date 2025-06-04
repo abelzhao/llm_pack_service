@@ -173,7 +173,6 @@ async def chat_model_list() -> Response:
             "code": 1,
             "msg": "success",
             "data": {
-                "deepseek": Model.DEEPSEEK.value,
                 "doubao": Model.DOUBAO.value
             },
             "status": 200
