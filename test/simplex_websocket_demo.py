@@ -46,7 +46,7 @@ def submit_task():
             }
         }
     }
-    print(f'Submit task headers: \n{headers}')
+    print(f'Submit task request headers: \n{json.dumps(headers, indent=2)}\n')
     print(f'Submit task request: \n{json.dumps(request, indent=2)}\n')
     response = requests.post(submit_url, data=json.dumps(request), headers=headers)
     print(f'Submit task response headers: \n{response.headers}\n')

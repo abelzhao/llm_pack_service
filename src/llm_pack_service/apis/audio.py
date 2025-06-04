@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse, Response
 import httpx
 import json
 import logging
+import logging.config
 import asyncio
 import websockets
 import uuid
@@ -40,8 +41,26 @@ async def temp_mp3(request: Request, file_name: str = "./test/output.mp3") -> Un
         return get_error_response(f"File {file_name} not found")
     
     
-async def submit_task(request_data: Dict[str, Union[str, Dict, list]]):
+async def submit_task(request_data):
     """提交语音任务"""
+    # Enable httpx debug logging
+    logging.config.dictConfig({
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'loggers': {
+            'httpx': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': False,
+            },
+        }
+    })
+    logging.info("Submitting task to AUC API")
     submit_url = os.getenv("DOUBAO_AUC_API_SUBMIT_URL", "https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit")
     logging.info(f'submit_url: {submit_url}')
 
@@ -68,7 +87,7 @@ async def submit_task(request_data: Dict[str, Union[str, Dict, list]]):
             logging.info(f'Submit task response header X-Tt-Logid: {x_tt_logid}\n')
             return task_id, x_tt_logid
         else:
-            print('\nSubmit task failed\n')
+            print('Submit task failed\n')
             raise TaskSubmissionError("Task submission failed: X-Api-Status-Code not in response headers")
     
     return task_id
