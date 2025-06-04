@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-from llm_pack_service.apis import chat, audio
+from llm_pack_service.apis import chat, audio, image
 from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging for entire application
@@ -26,6 +26,7 @@ app = FastAPI(title="LLM Pack Service")
 
 app.include_router(chat.router)
 app.include_router(audio.router)
+app.include_router(image.router)
 
 @app.get("/")
 async def root():
