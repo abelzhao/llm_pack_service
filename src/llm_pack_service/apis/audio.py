@@ -5,7 +5,6 @@ from fastapi.responses import StreamingResponse, Response
 import httpx
 import json
 import logging
-import logging.config
 import asyncio
 import websockets
 import uuid
@@ -43,29 +42,10 @@ async def temp_mp3(request: Request, file_name: str = "./test/output.mp3") -> Un
     
 async def submit_task(request_data):
     """提交语音任务"""
-    # Enable httpx debug logging
-    logging.config.dictConfig({
-        'version': 1,
-        'disable_existing_loggers': False,
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-            },
-        },
-        'loggers': {
-            'httpx': {
-                'handlers': ['console'],
-                'level': 'DEBUG',
-                'propagate': False,
-            },
-        }
-    })
-    logging.info("Submitting task to AUC API")
+    logging.debug("Submitting task to AUC API")
     submit_url = os.getenv("DOUBAO_AUC_API_SUBMIT_URL", "https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit")
-    logging.info(f'submit_url: {submit_url}')
-
+    logging.debug(f'submit_url: {submit_url}')
     task_id = str(uuid.uuid4())
-    
     headers = {
         "X-Api-App-Key": os.getenv("X_Api_App_Id", "5722492847"),
         "X-Api-Access-Key": os.getenv("X_Api_Access_Token", "yI2H5ccfp_oP8kgtDLtAUtLhPiDpdKd0"),
@@ -74,20 +54,20 @@ async def submit_task(request_data):
         "X-Api-Sequence": "-1"
     }
     
-    logging.info(f'Submit task request headers: \n{json.dumps(headers, indent=2)}\n')
-    logging.info(f'Submit task request data: \n{json.dumps(request_data, indent=2)}\n')
+    logging.debug(f'Submit task request headers: \n{json.dumps(headers, indent=2)}\n')
+    logging.debug(f'Submit task request data: \n{json.dumps(request_data, indent=2)}\n')
     
     async with httpx.AsyncClient() as client:
-        response = await client.post(submit_url, json=json.dumps(request_data), headers=headers)
-        print(f'Submit task response headers: \n{response.headers}\n')
+        response = await client.post(submit_url, json=request_data, headers=headers)
+        logging.debug(f'Submit task response headers: \n{response.headers}\n')
         if 'X-Api-Status-Code' in response.headers and response.headers["X-Api-Status-Code"] == "20000000":
-            logging.info(f'Submit task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
-            logging.info(f'Submit task response header X-Api-Message: {response.headers["X-Api-Message"]}')
+            logging.debug(f'Submit task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
+            logging.debug(f'Submit task response header X-Api-Message: {response.headers["X-Api-Message"]}')
             x_tt_logid = response.headers.get("X-Tt-Logid", "")
-            logging.info(f'Submit task response header X-Tt-Logid: {x_tt_logid}\n')
+            logging.debug(f'Submit task response header X-Tt-Logid: {x_tt_logid}\n')
             return task_id, x_tt_logid
         else:
-            print('Submit task failed\n')
+            logging.debug('Submit task failed\n')
             raise TaskSubmissionError("Task submission failed: X-Api-Status-Code not in response headers")
     
     return task_id
@@ -103,17 +83,29 @@ async def query_task(task_id, x_tt_logid):
         "X-Tt-Logid": x_tt_logid  # 固定传递 x-tt-logid
     }
     async with httpx.AsyncClient() as client:
-        response = await client.post(query_url, json.dumps({}), headers=headers)
+        response = await client.post(query_url, json={}, headers=headers)
+        logging.debug(f'Query task response headers: \n{response.headers}\n')
         if 'X-Api-Status-Code' in response.headers:
-            logging.info(f'Query task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
-            logging.info(f'Query task response header X-Api-Message: {response.headers["X-Api-Message"]}')
-            logging.info(f'Query task response header X-Tt-Logid: {response.headers["X-Tt-Logid"]}\n')
+            logging.debug(f'Query task response header X-Api-Status-Code: {response.headers["X-Api-Status-Code"]}')
+            logging.debug(f'Query task response header X-Api-Message: {response.headers["X-Api-Message"]}')
+            logging.debug(f'Query task response header X-Tt-Logid: {response.headers["X-Tt-Logid"]}\n')
         else:
-            logging.info(f'Query task failed and the response headers are: {response.headers}')
-            raise TaskSubmissionError("Task query failed: X-Api-Status-Code not in response headers")        
+            logging.debug(f'Query task failed and the response headers are: {response.headers}')
+            raise TaskSubmissionError("Task query failed: X-Api-Status-Code not in response headers")    
         if response.status_code != 200:
             raise TaskQueryError("Task query failed with non-200 status code")
         return response
+    
+def del_file(file_path: str):
+    """删除文件"""
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logging.debug(f"Deleted temporary file: {file_path}")
+        else:
+            logging.debug(f"File not found for deletion: {file_path}")
+    except Exception as e:
+        logging.error(f"Error deleting file {file_path}: {str(e)}")
 
 
 @router.post("/auc", response_model=None)
@@ -132,9 +124,11 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
         return get_error_response(f"Error saving audio file: {str(e)}")
     
     try:
-        # temp_audio_url = f"{request.url.scheme}://{request.url.netloc}/api/v1/tw?file_name={temp_audio_path}"
-        temp_audio_url = "http://8.137.149.26:8808/api/v1/tw?file_name=./test/output.mp3"
-        logging.info(f"temp_audio_url: {temp_audio_url}")
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
+            temp_audio_url = "http://8.137.149.26:8808/api/v1/tw?file_name=./test/output.mp3"
+        else:
+            temp_audio_url = f"{request.url.scheme}://{request.url.netloc}/api/v1/tw?file_name={temp_audio_path}"
+        logging.debug(f"temp_audio_url: {temp_audio_url}")
     except Exception as e:
         return get_error_response(f"Error generating file URL: {str(e)}")
         
@@ -165,6 +159,8 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
     try:
         task_id, x_tt_logid = await submit_task(data)  # 提交任务
     except TaskSubmissionError as e:
+        # delete temp_file
+        del_file(temp_audio_path)
         return get_error_response(str(e))
     
     while True:
@@ -172,14 +168,22 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
             query_response = await query_task(task_id, x_tt_logid)  # 查询任务状态
             code = query_response.headers.get('X-Api-Status-Code', "")
             if code == '20000000':
-                logging.info('Query task success')
+                logging.debug('Query task success')
+                query_result = query_response.json()
+                if 'result' not in query_result or 'text' not in query_result['result']:
+                    logging.error("Query result does not contain expected 'result' or 'text'")
+                    del_file(temp_audio_path)
+                    return get_error_response("Invalid task result format")
+                del_file(temp_audio_path)
                 return Response(
-                    content=json.dumps(data),
+                    content=json.dumps(query_result['result']['text']),
                     media_type="application/json"
                 )
             elif code != '20000001' and code != '20000002':
                 logging.error(f"Task failed with code: {code}")
+                del_file(temp_audio_path)
                 return get_error_response("Task failed")
-            await asyncio.sleep(1)  # 等待一段时间后重试
+            await asyncio.sleep(3)
         except TaskQueryError as e:
+            del_file(temp_audio_path)
             return get_error_response(str(e))

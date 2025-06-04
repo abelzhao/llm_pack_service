@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Configure logging for entire application
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
