@@ -55,7 +55,7 @@ async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerato
                 if new_chunk:
                     role = new_chunk.get("role", role)
                     new_chunk["role"] = role
-                    yield "data: " + json.dumps(new_chunk)+"\n\n"
+                    yield "data: " + json.dumps(new_chunk, ensure_ascii=False)+"\n\n"
 
 async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
     """非流生成器
