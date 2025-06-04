@@ -1,7 +1,8 @@
 from enum import Enum
-from typing import Union
-from fastapi import APIRouter, Request, Body
+from typing import Union, Optional
+from fastapi import APIRouter, Request, Body, Query, HTTPException
 from fastapi.responses import StreamingResponse, Response
+from pydantic import BaseModel, Field
 import httpx
 import json
 import os
@@ -10,6 +11,8 @@ import logging
 
 from .utils import Model, Provider, Token, Url
 from .error import get_error_response
+
+
 
 router = APIRouter(prefix="/api/v1", tags=["图像"])
 JSON_MEDIA_TYPE = "application/json"
@@ -27,40 +30,75 @@ class ImgSize(str, Enum):
 class ResponseFormat(str, Enum):
     URL = "url"
     B64JSON = "b64_json"
+    
+class ImageRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=1000)
+    size: str
+    watermark: bool
+    response_format: str
+    guidance_scale: Optional[float] = Field(2.5, ge=0.0, le=10.0)
 
 
-@router.post("/text_gen_img", response_model=None)
-async def text_gen_image(request: Request, size: ImgSize, watermark: bool, 
-                         response_format: ResponseFormat, prompt: str = Body(), guidance_scale: float = 2.5) -> Union[StreamingResponse, Response]:
+@router.post("/ark", response_model=None)
+async def text_gen_image(
+    request: ImageRequest = Body(...)
+) -> Union[StreamingResponse, Response]:
     """文本生成图像
     
     Args:
-        request (Request): 请求对象
-        size (ImgSize): 图像大小
-        watermark (bool): 是否添加水印
-        response_format (ResponseFormat): 响应格式
-        guidance_scale (float): 引导比例
+        request (ImageRequest): 图像生成请求参数
     Returns:
         Union[StreamingResponse, Response]: 图像生成结果
     """
-    url = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_URL", "https://openspeech.bytedance.com/api/v3/auc/bigmodel/text2image")
+    prompt = request.prompt
+    size = request.size
+    watermark = request.watermark
+    response_format = request.response_format
+    guidance_scale = request.guidance_scale
+    # Validate size
+    valid_sizes = [e.value for e in ImgSize]
+    if size not in valid_sizes:
+        return get_error_response(
+            f"Invalid size. Must be one of: {', '.join(valid_sizes)}"
+        )
+    
+    # Validate response_format
+    valid_formats = [e.value for e in ResponseFormat]
+    if response_format not in valid_formats:
+        return get_error_response(
+            f"Invalid response_format. Must be one of: {', '.join(valid_formats)}"
+        )
+    
+    # Validate guidance_scale
+    if guidance_scale < 0 or guidance_scale > 10:
+        return get_error_response(
+            "guidance_scale must be between 0.0 and 10.0"
+        )
+
+    logging.debug(f"Image generation request - prompt: {prompt}, size: {size}, watermark: {watermark}, format: {response_format}, guidance: {guidance_scale}")
+    url = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_URL", "https://ark.cn-beijing.volces.com/api/v3/text2image/generate")
     token = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_KEY", "4bbc2539-be5c-4838-96dc-1b943f65967a")
     headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}"
     }
     data = {
         "model": os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_MODEL", "doubao-seedream-3-0-t2i-250415"),
-        "size": size.value,
+        "size": size,
         "watermark": watermark,
-        "response_format": response_format.value,
+        "response_format": response_format,
         "guidance_scale": guidance_scale,
-        "seed":123
+        "seed":123,
+        "prompt": prompt
     }
-    
+    logging.debug(f"Request data: {data}")
     async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=data)
-        response.raise_for_status()
+        try:
+            response = await client.post(url, headers=headers, json=data)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            return get_error_response(f"HTTP error occurred: {e.response.status_code} - url: {url} - data: {data}")
         data = response.json()
         logging.debug(f"Response data: {data}")
         if response_format == ResponseFormat.URL:
