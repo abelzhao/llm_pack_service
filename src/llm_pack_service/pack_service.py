@@ -31,13 +31,7 @@ app.include_router(audio.router)
 async def root():
     return {"message": "Hello from llm-pack-service!"}
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
 def main():
-    # Verify environment variables loaded
-    logging.info(f"DEEPSEEK_API_KEY loaded: {'yes' if os.getenv('DEEPSEEK_API_KEY') else 'no'}")
     logging.info(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")
     
     logging.info("Starting llm-pack-service...")

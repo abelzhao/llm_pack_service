@@ -78,31 +78,20 @@ async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
 
 
 @router.post("/chat", response_model=None)
-async def chat(messages: List[Dict], provider: str, stream: bool, model: str, reason:bool) -> Union[StreamingResponse, Response]:
+async def chat(messages: List[Dict], stream: bool, model: str, reason:bool) -> Union[StreamingResponse, Response]:
     """对外提供大模型聊天服务
     Args:
         messages (List[Dict]): 聊天的消息结构体
-        provider (str): 大模型提供商
         model str: 模型名称
         stream bool: 是否流式返回
         reason bool: 是否做推理
-        
     Returns:
         要么StreamingResponse，要么Response
-        
     """
-    if provider == Provider.DEEPSEEK.value:
-        url = Url.DEEPSEEK.value
-        token = Token.DEEPSEEK.value
-        if model not in ast.literal_eval(Model.DEEPSEEK.value):
-            return get_error_response(f"模型 {model} 不在 DeepSeek 支持的模型列表中: {Model.DEEPSEEK.value}")
-    elif provider == Provider.DOUBAO.value:
-        url = Url.DOUBAO.value
-        token = Token.DOUBAO.value
-        if model not in ast.literal_eval(Model.DOUBAO.value):
-            return get_error_response(f"模型 {model} 不在 DouBao 支持的模型列表中: {Model.DOUBAO.value}")
-    else:
-        return get_error_response(f"不支持的提供商: {provider}")
+    url = Url.DOUBAO.value
+    token = Token.DOUBAO.value
+    if model not in ast.literal_eval(Model.DOUBAO.value):
+        return get_error_response(f"模型 {model} 不在 DouBao 支持的模型列表中: {Model.DOUBAO.value}")
         
     headers = {
             "Accept": "application/json",
@@ -118,8 +107,7 @@ async def chat(messages: List[Dict], provider: str, stream: bool, model: str, re
     
     # logging.info(f"Request data:\n{data}\n")
     
-    if (provider == Provider.DEEPSEEK.value and reason and "reasoner" not in model) or \
-        (provider == Provider.DOUBAO.value and reason and "r1" not in model):
+    if reason and "chat" in model:
         json_data = {
             "code": 0,
             "msg": f"{model} 不支持推理模式",
@@ -132,8 +120,7 @@ async def chat(messages: List[Dict], provider: str, stream: bool, model: str, re
             media_type=JSON_MEDIA_TYPE
         )
     
-    if (provider == Provider.DEEPSEEK.value and not reason and "reasoner" in model) or \
-        (provider == Provider.DOUBAO.value and not reason and "r1" in model):
+    if not reason and "chat" not in model:
         json_data = {
             "code": 0,
             "msg": f"{model} 支持了推理模式",
