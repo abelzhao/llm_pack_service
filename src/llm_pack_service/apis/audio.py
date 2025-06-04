@@ -138,7 +138,7 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
         },
         "audio": {
             "url": temp_audio_url,
-            "format": "mp3",  # Adjust based on actual audio format
+            "format": "mp3",
             "codec": "raw",
             "rate": 16000,
             "bits": 16,
@@ -175,8 +175,14 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
                     del_file(temp_audio_path)
                     return get_error_response("Invalid task result format")
                 del_file(temp_audio_path)
+                resp_data = {
+                    "code": 1,
+                    "msg": 'success',
+                    "data": query_result['result']['text'],
+                    "status": 200
+                }
                 return Response(
-                    content=json.dumps(query_result['result']['text']),
+                    json.dumps(resp_data),
                     media_type="application/json"
                 )
             elif code != '20000001' and code != '20000002':
