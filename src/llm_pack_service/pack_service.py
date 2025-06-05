@@ -33,7 +33,7 @@ async def root():
     return {"message": "Hello from llm-pack-service!"}
 
 def main():
-    logging.info(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")
+    logging.debug(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")
     
     logging.info("Starting llm-pack-service...")
     import uvicorn

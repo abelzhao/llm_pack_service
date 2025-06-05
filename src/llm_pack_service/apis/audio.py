@@ -19,7 +19,7 @@ import os
 
 from .error import get_error_response, TaskSubmissionError, TaskQueryError
 
-router = APIRouter(prefix="/api/v1", tags=["语音"])
+router = APIRouter(prefix="/api/v1", tags=["语音转文字"])
 
 JSON_MEDIA_TYPE = "application/json"
 

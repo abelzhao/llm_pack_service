@@ -14,7 +14,7 @@ from .error import get_error_response
 
 
 
-router = APIRouter(prefix="/api/v1", tags=["图像"])
+router = APIRouter(prefix="/api/v1", tags=["文字生成图像"])
 JSON_MEDIA_TYPE = "application/json"
 
 class ImgSize(str, Enum):
@@ -39,7 +39,7 @@ class ImageRequest(BaseModel):
     guidance_scale: Optional[float] = Field(2.5, ge=0.0, le=10.0)
 
 
-@router.post("/ark", response_model=None)
+@router.post("/t2i", response_model=None)
 async def text_gen_image(
     request: ImageRequest = Body(...)
 ) -> Union[StreamingResponse, Response]:
@@ -80,7 +80,6 @@ async def text_gen_image(
     token = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_KEY", "4bbc2539-be5c-4838-96dc-1b943f65967a")
     headers = {
         "Content-Type": "application/json",
-        "Accept": "application/json",
         "Authorization": f"Bearer {token}"
     }
     data = {
