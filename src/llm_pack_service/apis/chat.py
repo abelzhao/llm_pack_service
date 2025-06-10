@@ -21,7 +21,7 @@ def trans_chunk(chunk: str) -> Union[Dict, str]:
         if not chunk.strip():
             return ""
         if chunk.strip() == "data: [DONE]":
-            return {"isDone":True}
+            return {"isDone": "True"}
         if chunk.startswith("data: "):
             chunk = chunk[6:]
         chunk_data = json.loads(chunk)
