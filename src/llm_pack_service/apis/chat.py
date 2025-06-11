@@ -1,15 +1,17 @@
 from enum import Enum
 from typing import List, Dict, Union, AsyncGenerator
-from fastapi import APIRouter
+import fastapi
 from fastapi.responses import StreamingResponse, Response
-from fastapi import HTTPException
+from fastapi import HTTPException, APIRouter
+from fastapi import UploadFile, File, Form
+from pydantic import BaseModel
 import httpx
 import json
 import logging
 import ast
-
 from .utils import Model, Provider, Token, Url
 from .error import get_error_response
+import tempfile
 
 router = APIRouter(prefix="/api/v1", tags=["对话"])
 
@@ -78,16 +80,37 @@ async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
 
 
 @router.post("/chat", response_model=None)
-async def chat(messages: List[Dict], stream: bool, model: str, reason:bool) -> Union[StreamingResponse, Response]:
+async def chat(stream: bool, model: str, reason:bool,
+            messages: str = Form(..., description="历史对话记录，格式为JSON字符串"),
+            file: UploadFile = File(..., description="上传的文件")
+            ) -> Union[StreamingResponse, Response]:
     """对外提供大模型聊天服务
     Args:
-        messages (List[Dict]): 聊天的消息结构体
-        model str: 模型名称
         stream bool: 是否流式返回
+        model str: 模型名称
         reason bool: 是否做推理
+        messages str: 聊天的消息结构体
+        file UploadFile: 上传的文件
     Returns:
         要么StreamingResponse，要么Response
     """
+
+    try:
+        messages = json.loads(messages)
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error: {e}")
+        return get_error_response("历史对话记录格式错误，请提供有效的JSON字符串")
+
+    try:
+        content = await file.read()
+        _file_size = len(content)
+        with tempfile.NamedTemporaryFile(delete=True, suffix=".tmp") as temp_file:
+            temp_file.write(content)
+            _temp_file_path = temp_file.name
+    except Exception as e:
+        logging.error(f"File read error: {e}")
+        return get_error_response("文件读取错误，请重新上传有效的文件")
+
     url = Url.DOUBAO.value
     token = Token.DOUBAO.value
     if model not in ast.literal_eval(Model.DOUBAO.value):
@@ -105,7 +128,7 @@ async def chat(messages: List[Dict], stream: bool, model: str, reason:bool) -> U
             "stream": stream
         }
     
-    # logging.info(f"Request data:\n{data}\n")
+    # # logging.info(f"Request data:\n{data}\n")
     
     if reason and "chat" in model:
         json_data = {
