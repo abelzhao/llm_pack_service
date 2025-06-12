@@ -76,13 +76,18 @@ async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
         response.raise_for_status()
         data = response.json()['choices'][0]['message']
         return data
-    
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+    
+class ReqJson(BaseModel):
+    """请求JSON模型"""
+    messages: List[ChatMessage]
+    files: List[str] = []
 
 @router.post("/chat", response_model=None)
-async def chat(stream: bool, model: str, reason:bool,
-            messages: str = Form(..., description="历史对话记录，格式为JSON字符串"),
-            file: UploadFile = File(..., description="上传的文件")
+async def chat(reqjson: ReqJson, stream: bool, model: str, reason:bool
             ) -> Union[StreamingResponse, Response]:
     """对外提供大模型聊天服务
     Args:
@@ -96,17 +101,16 @@ async def chat(stream: bool, model: str, reason:bool,
     """
 
     try:
-        messages = json.loads(messages)
-    except json.JSONDecodeError as e:
-        logging.error(f"JSON decode error: {e}")
-        return get_error_response("历史对话记录格式错误，请提供有效的JSON字符串")
+        reqdict = reqjson.dict()
+        messages = reqdict.get("messages", [])
+        _files = reqdict.get("files", [])
+    except Exception as e:
+        logging.error(f"Request parsing error: {e}")
+        return get_error_response("请求格式错误，请检查输入数据")
 
     try:
-        content = await file.read()
-        _file_size = len(content)
-        with tempfile.NamedTemporaryFile(delete=True, suffix=".tmp") as temp_file:
-            temp_file.write(content)
-            _temp_file_path = temp_file.name
+        for _f in _files:
+            print(_f)
     except Exception as e:
         logging.error(f"File read error: {e}")
         return get_error_response("文件读取错误，请重新上传有效的文件")
