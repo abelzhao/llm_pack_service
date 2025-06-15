@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Dict, Union, AsyncGenerator
+from typing import List, Dict, Union, AsyncGenerator, Optional
 import fastapi
 from fastapi.responses import StreamingResponse, Response
 from fastapi import HTTPException, APIRouter
@@ -12,10 +12,16 @@ import ast
 from .utils import Model, Provider, Token, Url
 from .error import get_error_response
 import tempfile
+import configparser
 
 router = APIRouter(prefix="/api/v1", tags=["对话"])
 
 JSON_MEDIA_TYPE = "application/json"
+
+config = configparser.ConfigParser()
+config.read("model_config.ini")
+print(f"Config loaded: {config.sections()}")
+
 
 def trans_chunk(chunk: str) -> Union[Dict, str]:
     """转换chunk为字符串"""
@@ -82,43 +88,43 @@ class ChatMessage(BaseModel):
     content: str
     
 class ReqJson(BaseModel):
-    """请求JSON模型"""
+    """纯文本的请求体"""
     messages: List[ChatMessage]
     files: List[str] = []
+    
+ModelSection = Enum("ModelSection", {section.upper():section.lower() for section in config.sections()})
+Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled", "auto": "auto"})
 
 @router.post("/chat", response_model=None)
-async def chat(reqjson: ReqJson, stream: bool, model: str, reason:bool
+async def chat(req_json: ReqJson, 
+               model: ModelSection, 
+               stream: bool = True,
+               thinking: Optional[Thinking] = None 
             ) -> Union[StreamingResponse, Response]:
     """对外提供大模型聊天服务
     Args:
-        stream bool: 是否流式返回
+        reqjson ReqJson: 请求体，包含消息和文件
         model str: 模型名称
-        reason bool: 是否做推理
-        messages str: 聊天的消息结构体
-        file UploadFile: 上传的文件
+        stream bool: 是否流式返回, 默认为True
+        thinking bool: 是否深度思考, 默认为False
     Returns:
         要么StreamingResponse，要么Response
     """
 
     try:
-        reqdict = reqjson.dict()
-        messages = reqdict.get("messages", [])
-        _files = reqdict.get("files", [])
+        req_dict = req_json.dict()
+        _messages = req_dict.get("messages", [])
+        logging.debug(f"Received messages: {_messages}")
+        _files = req_dict.get("files", [])
+        logging.debug(f"Received files: {_files}")
     except Exception as e:
-        logging.error(f"Request parsing error: {e}")
-        return get_error_response("请求格式错误，请检查输入数据")
-
-    try:
-        for _f in _files:
-            print(_f)
-    except Exception as e:
-        logging.error(f"File read error: {e}")
-        return get_error_response("文件读取错误，请重新上传有效的文件")
+        return get_error_response(f"请求格式错误，请检查输入数据：{e}")
 
     url = Url.DOUBAO.value
     token = Token.DOUBAO.value
-    if model not in ast.literal_eval(Model.DOUBAO.value):
-        return get_error_response(f"模型 {model} 不在 DouBao 支持的模型列表中: {Model.DOUBAO.value}")
+    model = model.value.lower()
+    if model not in config.sections():
+        return get_error_response(f"模型 {model} 不在 DouBao 支持的模型列表中: {config.sections()}")
         
     headers = {
             "Accept": "application/json",
@@ -126,39 +132,49 @@ async def chat(reqjson: ReqJson, stream: bool, model: str, reason:bool
             "Authorization": f"Bearer {token}"
         }
     
+    # check thinking mode
+    if config[model]["thinking"]=="true":
+        thinking_obj = {
+            "type": thinking.value,
+        }
+    else:
+        thinking_obj = None
+        
+    # check files
+    if config[model]["multi_modal"] == "false" and len(_files) > 0:
+        return get_error_response(f"模型 {model} 不支持多模态输入，请换一个模型：{config.sections()}")
+    
+    if config[model]["multi_modal"] == "true" and len(_files) > 0 and len(_messages) > 0:
+        if _messages[-1]["role"] != "user":
+            return get_error_response(f"模型 {model} 多模态输入时，最后一条消息必须是用户消息，请检查输入数据。")
+        _last_message_content = [
+            {
+                "image_url": {
+                    "url": url
+                },
+                "type": "image_url"
+            }
+        for url in _files]
+        _last_message_content.append({
+            "text": _messages[-1]["content"],
+            "type": "text"
+        })
+        _last_message = {
+            "role": "user",
+            "content": _last_message_content
+        }
+        messages = _messages[:-1] + [_last_message]
+    else:
+        messages = _messages
+    
     data = {
-            "model": model,
+            "model": "-".join([model, config[model]["version"]]),
             "messages": messages,
-            "stream": stream
+            "stream": stream,
+            "thinking": thinking_obj,
         }
     
-    # # logging.info(f"Request data:\n{data}\n")
-    
-    if reason and "chat" in model:
-        json_data = {
-            "code": 0,
-            "msg": f"{model} 不支持推理模式",
-            "data": {},
-            "status": 404
-        }
-        return Response(
-            json.dumps(json_data),
-            status_code=200,
-            media_type=JSON_MEDIA_TYPE
-        )
-    
-    if not reason and "chat" not in model:
-        json_data = {
-            "code": 0,
-            "msg": f"{model} 支持了推理模式",
-            "data": {},
-            "status": 404
-        }
-        return Response(
-            json.dumps(json_data),
-            status_code=200,
-            media_type=JSON_MEDIA_TYPE
-        )
+    logging.debug(f"Request data:\n {data}\n")
     
     if stream:
         try:
@@ -199,9 +215,7 @@ async def chat_model_list() -> Response:
         json.dumps({
             "code": 1,
             "msg": "success",
-            "data": {
-                "doubao": Model.DOUBAO.value
-            },
+            "data": {section: dict(config[section]) for section in config.sections()},
             "status": 200
         }),
         status_code=200,
