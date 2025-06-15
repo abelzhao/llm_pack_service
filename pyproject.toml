@@ -1,11 +1,12 @@
 [project]
 name = "llm-pack-service"
-version = "0.1.2"
+version = "0.1.3"
 description = "integrate the apis of different llm to one api, which means: large language model package service"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "asyncio>=3.4.3",
+    "configparser>=7.2.0",
     "fastapi>=0.95.0", # StreamingResponse was introduced in 0.95.0
     "httpx>=0.28.1",
     "pip>=25.1.1",
