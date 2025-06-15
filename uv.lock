@@ -206,7 +206,6 @@ dependencies = [
     { name = "requests" },
     { name = "uuid" },
     { name = "uvicorn" },
-    { name = "wave" },
     { name = "websockets" },
 ]
 
@@ -223,7 +222,6 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.3" },
     { name = "uuid", specifier = ">=1.30" },
     { name = "uvicorn", specifier = ">=0.34.2" },
-    { name = "wave", specifier = ">=0.0.2" },
     { name = "websockets", specifier = ">=15.0.1" },
 ]
 
@@ -3043,12 +3041,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/a6/ae/9bbb19b9e1c450cf9
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b1/4b/4cef6ce21a2aaca9d852a6e84ef4f135d99fcd74fa75105e2fc0c8308acd/uvicorn-0.34.2-py3-none-any.whl", hash = "sha256:deb49af569084536d269fe0a6d67e3754f104cf03aba7c11c40f01aadf33c403", size = 62483 },
 ]
-
-[[package]]
-name = "wave"
-version = "0.0.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/df/33/5a06e0c47a147b2683876ba7c576fad13e92b0b16755eb431e56c341e0cf/Wave-0.0.2.tar.gz", hash = "sha256:5a895bb85e04e38c82dba90d66a5ae8f488b50c58f3fc4df868a5bcdcabb8632", size = 27334 }
 
 [[package]]
 name = "websockets"

@@ -16,7 +16,6 @@ dependencies = [
     "requests>=2.32.3",
     "uuid>=1.30",
     "uvicorn>=0.34.2",
-    "wave>=0.0.2",
     "websockets>=15.0.1",
 ]
 
