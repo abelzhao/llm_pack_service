@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Dict, Union, AsyncGenerator, Optional
+from typing import List, Dict, Union, AsyncGenerator, Optional, Tuple
 import fastapi
 from fastapi.responses import StreamingResponse, Response
 from fastapi import HTTPException, APIRouter
@@ -23,25 +23,25 @@ config.read("model_config.ini")
 print(f"Config loaded: {config.sections()}")
 
 
-def trans_chunk(chunk: str) -> Union[Dict, str]:
+def trans_chunk(chunk: str) -> Tuple:
     """转换chunk为字符串"""
     try:
         if not chunk.strip():
-            return ""
+            return "", "empty"
         if chunk.strip() == "data: [DONE]":
-            return {"isDone": "True"}
+            return {"isDone": "True"}, "end"
         if chunk.startswith("data: "):
             chunk = chunk[6:]
         chunk_data = json.loads(chunk)
         if 'choices' in chunk_data and chunk_data['choices']:
             delta = chunk_data['choices'][0].get('delta', {})
-            return delta
+            return delta, "content"
         else:
             logging.warning(f"Unexpected chunk format: {chunk_data}")
-            return ""
+            return "", "empty"
     except json.JSONDecodeError as e:
         logging.warning(f"Failed to parse chunk: {chunk}, error: {e}")
-        return ""
+        return "", "empty"
 
 async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerator[str, None]:
     """流生成器
@@ -58,11 +58,16 @@ async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerato
         async with client.stream("POST", url, headers=headers, json=data) as response:
             response.raise_for_status()
             role = ""
+            token_num = 0
             async for chunk in response.aiter_lines():
-                new_chunk = trans_chunk(chunk)
+                new_chunk, position = trans_chunk(chunk)
                 if new_chunk:
                     role = new_chunk.get("role", role)
                     new_chunk["role"] = role
+                    if position == "content":
+                        token_num += 1
+                    elif position == "end":
+                        new_chunk["completion_tokens"] = token_num
                     yield "data: " + json.dumps(new_chunk, ensure_ascii=False)+"\n\n"
 
 async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
