@@ -104,7 +104,8 @@ Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled", "auto
 async def chat(req_json: ReqJson, 
                model: ModelSection, 
                stream: bool = True,
-               thinking: Optional[Thinking] = None 
+               thinking: Optional[Thinking] = None,
+               max_tokens: int = 4096
             ) -> Union[StreamingResponse, Response]:
     """对外提供大模型聊天服务
     Args:
@@ -171,12 +172,16 @@ async def chat(req_json: ReqJson,
         messages = _messages[:-1] + [_last_message]
     else:
         messages = _messages
+        
+    if max_tokens>16000:
+        max_tokens = 16000
     
     data = {
             "model": "-".join([model, config[model]["version"]]),
             "messages": messages,
             "stream": stream,
             "thinking": thinking_obj,
+            "max_tokens": max_tokens
         }
     
     logging.debug(f"Request data:\n {data}\n")
