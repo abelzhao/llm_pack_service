@@ -33,11 +33,12 @@ def trans_chunk(chunk: str) -> Tuple:
         if chunk.startswith("data: "):
             chunk = chunk[6:]
         chunk_data = json.loads(chunk)
-        if 'choices' in chunk_data and chunk_data['choices']:
-            delta = chunk_data['choices'][0].get('delta', {})
-            return delta, "content"
+        chunk_short = {}
+        if len(chunk_data['choices'])>0:
+            chunk_short = chunk_data['choices'][0].get('delta', {})
+            chunk_short["usage"] = chunk_data["usage"]    
+            return chunk_short, "content"
         else:
-            logging.warning(f"Unexpected chunk format: {chunk_data}")
             return "", "empty"
     except json.JSONDecodeError as e:
         logging.warning(f"Failed to parse chunk: {chunk}, error: {e}")
@@ -58,16 +59,12 @@ async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerato
         async with client.stream("POST", url, headers=headers, json=data) as response:
             response.raise_for_status()
             role = ""
-            token_num = 0
+            _token_num = 0
             async for chunk in response.aiter_lines():
-                new_chunk, position = trans_chunk(chunk)
+                new_chunk, _position = trans_chunk(chunk)
                 if new_chunk:
                     role = new_chunk.get("role", role)
                     new_chunk["role"] = role
-                    if position == "content":
-                        token_num += 1
-                    elif position == "end":
-                        new_chunk["completion_tokens"] = token_num
                     yield "data: " + json.dumps(new_chunk, ensure_ascii=False)+"\n\n"
 
 async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
@@ -102,10 +99,10 @@ Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled", "auto
 
 @router.post("/chat", response_model=None)
 async def chat(req_json: ReqJson, 
-               model: ModelSection, 
-               stream: bool = True,
-               thinking: Optional[Thinking] = None,
-               max_tokens: int = 4096
+                model: ModelSection, 
+                stream: bool = True,
+                thinking: Optional[Thinking] = None,
+                max_tokens: int = 4096
             ) -> Union[StreamingResponse, Response]:
     """对外提供大模型聊天服务
     Args:
@@ -183,6 +180,12 @@ async def chat(req_json: ReqJson,
             "thinking": thinking_obj,
             "max_tokens": max_tokens
         }
+    if stream:
+        data.update({
+            "stream_options": {
+		        "include_usage": True,
+		        "chunk_include_usage": True
+	    }})
     
     logging.debug(f"Request data:\n {data}\n")
     
