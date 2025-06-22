@@ -98,8 +98,8 @@ ModelSection = Enum("ModelSection", {section.upper():section.lower() for section
 Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled", "auto": "auto"})
 
 @router.post("/chat", response_model=None)
-async def chat(req_json: ReqJson, 
-                model: ModelSection, 
+async def chat(req_json: ReqJson,
+                model: ModelSection,
                 stream: bool = True,
                 thinking: Optional[Thinking] = None,
                 max_tokens: int = 4096

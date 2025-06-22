@@ -7,9 +7,11 @@ requires-python = ">=3.11"
 dependencies = [
     "asyncio>=3.4.3",
     "configparser>=7.2.0",
+    "docx>=0.2.4",
     "fastapi>=0.95.0", # StreamingResponse was introduced in 0.95.0
     "httpx>=0.28.1",
     "pip>=25.1.1",
+    "pypdf2>=3.0.1",
     "python-dotenv>=1.1.0",
     "python-multipart>=0.0.20",
     "pyttsx3>=2.98",
