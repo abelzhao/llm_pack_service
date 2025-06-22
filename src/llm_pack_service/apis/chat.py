@@ -148,13 +148,22 @@ async def handle_nonstream_response(url: str, headers: Dict, data: Dict) -> Resp
     )
 
 @router.post("/chat", response_model=None)
-async def chat(req_json: ReqJson,
-                model: ModelSection,
-                stream: bool = True,
-                thinking: Optional[Thinking] = None,
-                max_tokens: int = 4096
-            ) -> Union[StreamingResponse, Response]:
-    """对外提供大模型聊天服务"""
+async def chat(
+    req_json: ReqJson,
+    model: ModelSection,
+    stream: bool = True,
+    thinking: Optional[Thinking] = None,
+    max_tokens: int = 4096
+) -> Union[StreamingResponse, Response]:
+    """对外提供大模型聊天服务
+    Args:
+        reqjson ReqJson: 请求体，包含消息和文件
+        model str: 模型名称
+        stream bool: 是否流式返回, 默认为True
+        thinking bool: 是否深度思考, 默认为False
+    Returns:
+        要么StreamingResponse，要么Response
+    """
     try:
         req_dict = req_json.dict()
         _messages = req_dict.get("messages", [])
