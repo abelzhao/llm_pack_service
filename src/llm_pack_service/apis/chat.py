@@ -97,6 +97,56 @@ class ReqJson(BaseModel):
 ModelSection = Enum("ModelSection", {section.upper():section.lower() for section in config.sections()})
 Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled", "auto": "auto"})
 
+def _build_messages(_messages: List[Dict], _files: List[str], model: str) -> List[Dict]:
+    """Construct the messages list with file handling if needed"""
+    if config[model]["multi_modal"] != "true" or not _files or not _messages:
+        return _messages
+        
+    if _messages[-1]["role"] != "user":
+        raise ValueError(f"模型 {model} 多模态输入时，最后一条消息必须是用户消息")
+        
+    _last_message_content = [
+        {
+            "image_url": {"url": url},
+            "type": "image_url"
+        } for url in _files
+    ]
+    _last_message_content.append({
+        "text": _messages[-1]["content"],
+        "type": "text"
+    })
+    return _messages[:-1] + [{
+        "role": "user",
+        "content": _last_message_content
+    }]
+
+async def handle_stream_response(url: str, headers: Dict, data: Dict) -> StreamingResponse:
+    """Handle streaming response generation"""
+    return StreamingResponse(
+        stream_generator(url, headers, data),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+            "Transfer-Encoding": "chunked"
+        }
+    )
+
+async def handle_nonstream_response(url: str, headers: Dict, data: Dict) -> Response:
+    """Handle non-streaming response generation"""
+    data = await nonstream_generator(url, headers, data)
+    return Response(
+        json.dumps({
+            "code": 1,
+            "msg": "success",
+            "data": data,
+            "status": 200
+        }),
+        status_code=200,
+        media_type=JSON_MEDIA_TYPE
+    )
+
 @router.post("/chat", response_model=None)
 async def chat(req_json: ReqJson,
                 model: ModelSection,
@@ -104,121 +154,66 @@ async def chat(req_json: ReqJson,
                 thinking: Optional[Thinking] = None,
                 max_tokens: int = 4096
             ) -> Union[StreamingResponse, Response]:
-    """对外提供大模型聊天服务
-    Args:
-        reqjson ReqJson: 请求体，包含消息和文件
-        model str: 模型名称
-        stream bool: 是否流式返回, 默认为True
-        thinking bool: 是否深度思考, 默认为False
-    Returns:
-        要么StreamingResponse，要么Response
-    """
-
+    """对外提供大模型聊天服务"""
     try:
         req_dict = req_json.dict()
         _messages = req_dict.get("messages", [])
-        logging.debug(f"Received messages: {_messages}")
         _files = req_dict.get("files", [])
+        logging.debug(f"Received messages: {_messages}")
         logging.debug(f"Received files: {_files}")
     except Exception as e:
         return get_error_response(f"请求格式错误，请检查输入数据：{e}")
 
-    url = Url.DOUBAO.value
-    token = Token.DOUBAO.value
-    model = model.value.lower()
-    if model not in config.sections():
-        return get_error_response(f"模型 {model} 不在 DouBao 支持的模型列表中: {config.sections()}")
-        
-    headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}"
-        }
-    
-    # check thinking mode
-    if config[model]["thinking"]=="true":
-        thinking_obj = {
-            "type": thinking.value,
-        }
-    else:
-        thinking_obj = None
-        
-    # check files
-    if config[model]["multi_modal"] == "false" and len(_files) > 0:
-        return get_error_response(f"模型 {model} 不支持多模态输入，请换一个模型：{config.sections()}")
-    
-    if config[model]["multi_modal"] == "true" and len(_files) > 0 and len(_messages) > 0:
-        if _messages[-1]["role"] != "user":
-            return get_error_response(f"模型 {model} 多模态输入时，最后一条消息必须是用户消息，请检查输入数据。")
-        _last_message_content = [
-            {
-                "image_url": {
-                    "url": url
-                },
-                "type": "image_url"
-            }
-        for url in _files]
-        _last_message_content.append({
-            "text": _messages[-1]["content"],
-            "type": "text"
-        })
-        _last_message = {
-            "role": "user",
-            "content": _last_message_content
-        }
-        messages = _messages[:-1] + [_last_message]
-    else:
-        messages = _messages
-        
-    if max_tokens>16000:
-        max_tokens = 16000
+    model_name = model.value.lower()
+    if model_name not in config.sections():
+        return get_error_response(f"模型 {model_name} 不在 DouBao 支持的模型列表中: {config.sections()}")
+
+    if config[model_name]["multi_modal"] == "false" and _files:
+        return get_error_response(f"模型 {model_name} 不支持多模态输入，请换一个模型：{config.sections()}")
+
+    try:
+        messages = _build_messages(_messages, _files, model_name)
+    except ValueError as e:
+        return get_error_response(str(e))
+
+    thinking_obj = {
+        "type": thinking.value,
+    } if config[model_name]["thinking"] == "true" else None
+
+    max_tokens = min(max_tokens, 16000)
     
     data = {
-            "model": "-".join([model, config[model]["version"]]),
-            "messages": messages,
-            "stream": stream,
-            "thinking": thinking_obj,
-            "max_tokens": max_tokens
-        }
+        "model": "-".join([model_name, config[model_name]["version"]]),
+        "messages": messages,
+        "stream": stream,
+        "thinking": thinking_obj,
+        "max_tokens": max_tokens
+    }
+    
     if stream:
         data.update({
             "stream_options": {
-		        "include_usage": True,
-		        "chunk_include_usage": True
-	    }})
+                "include_usage": True,
+                "chunk_include_usage": True
+            }
+        })
     
     logging.debug(f"Request data:\n {data}\n")
     
-    if stream:
-        try:
-            return StreamingResponse(
-                stream_generator(url, headers, data),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",  # 禁用Nginx缓冲
-                    "Connection": "keep-alive",
-                    "Transfer-Encoding": "chunked"
-                }
-            )
-        except Exception as e:
-            get_error_response(f"Streaming error: {e}")
-    else:
-        try:
-            data = await nonstream_generator(url, headers, data)
-            json_data = {
-                "code": 1,
-                "msg": "success",
-                "data": data,
-                "status": 200
-            }
-            return Response(
-                json.dumps(json_data),
-                status_code=200,
-                media_type=JSON_MEDIA_TYPE
-            )
-        except Exception as e:
-            get_error_response(f"Non-streaming error: {e}")
+    url = Url.DOUBAO.value
+    token = Token.DOUBAO.value
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+
+    try:
+        if stream:
+            return await handle_stream_response(url, headers, data)
+        return await handle_nonstream_response(url, headers, data)
+    except Exception as e:
+        return get_error_response(f"Error processing request: {e}")
             
 
 @router.get("/chat_model_list") 
