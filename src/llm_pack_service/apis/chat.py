@@ -130,6 +130,7 @@ async def _fetch_text_content(_text_urls) -> str:
                 response = await client.get(_url)
                 response.raise_for_status()
                 if _url.endswith(".txt"):
+                    logging.debug("parsing text file ...")
                     response.encoding = response.charset_encoding or 'utf-8'
                     _text_contents += response.text
                 elif _url.endswith(".csv"):
@@ -160,7 +161,7 @@ async def _fetch_text_content(_text_urls) -> str:
                         _text_contents += "\n".join(
                             [para.text for para in doc.paragraphs])
         except Exception:
-            return get_error_response(f"无法从URL获取文件数据: {_url} ")
+            raise ValueError(f"无法从URL获取文件数据: {_url} ")
     return _text_contents
 
 
@@ -172,13 +173,15 @@ async def _build_messages(_messages: List[Dict], _file_urls: List[str],
 
     _text_suffix = ('.txt', '.csv', '.doc', '.docx', '.md', '.pdf')
     _text_urls = [f for f in _file_urls if f.endswith(_text_suffix)]
-    _img_suffix = ('.png', '.jpg', '.gif', '.bmp')
+    _img_suffix = ('.png', '.jpg', '.jpeg', '.gif', '.bmp')
     _img_urls = [f for f in _file_urls if f.endswith(_img_suffix)]
     _other_urls = [
         f for f in _file_urls
         if (not f.endswith(_text_suffix)
             and not f.endswith(_img_suffix))
     ]
+
+    logging.debug(f"{_text_urls=}\n{_img_urls=}\n{_other_urls=}")
 
     # if config[model_name]["multi_modal"] == "false" and _files:
     #     return get_error_response(
@@ -229,7 +232,8 @@ async def handle_stream_response(url: str, headers: Dict,
     )
 
 
-async def handle_nonstream_response(url: str, headers: Dict, data: Dict) -> Response:
+async def handle_nonstream_response(url: str,
+                                    headers: Dict, data: Dict) -> Response:
     """Handle non-streaming response generation"""
     data = await nonstream_generator(url, headers, data)
     return Response(
