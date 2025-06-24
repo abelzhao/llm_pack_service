@@ -67,8 +67,8 @@ async def text_gen_image(
         try:
             response = await client.post(url, headers=headers, json=data)
             response.raise_for_status()
-        # except httpx.HTTPStatusError as e:
-        #     return get_error_response(f"HTTP error occurred: {e.response.status_code} - url: {url} - data: {data}")
+        except httpx.HTTPStatusError as e:
+            return get_error_response(f"HTTP error occurred: {e.response.status_code} - url: {url} - data: {data}")
         except httpx.ConnectTimeout:
             return get_error_response("Connection to image generation service timed out")
         except httpx.ReadTimeout:

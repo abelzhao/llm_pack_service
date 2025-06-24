@@ -1,13 +1,6 @@
 from enum import Enum
 import os
-from typing import Optional
-import json
-from fastapi.responses import Response
 
-
-class Provider(str, Enum):
-    DEEPSEEK = "deepseek"
-    DOUBAO = "doubao"
 
 def get_env_token(key_name: str) -> str:
     """Get API token from environment variable with error handling"""
@@ -19,16 +12,22 @@ def get_env_token(key_name: str) -> str:
         )
     return token
 
+
+class Provider(str, Enum):
+    DEEPSEEK = "deepseek"
+    DOUBAO = "doubao"
+
+
 class Token(str, Enum):
     # DEEPSEEK = get_env_token("DEEPSEEK_API_KEY")
     DOUBAO = get_env_token("DOUBAO_API_KEY")
-    
-    
+
+
 class Url(str, Enum):
     # DEEPSEEK = get_env_token("DEEPSEEK_API_URL")
     DOUBAO = get_env_token("DOUBAO_API_URL")
-    
-    
+
+
 class Model(str, Enum):
     # DEEPSEEK = get_env_token("DEEPSEEK_MODEL").split(",")
     DOUBAO = get_env_token("DOUBAO_MODEL").split(",")

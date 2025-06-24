@@ -1,17 +1,13 @@
 from enum import Enum
 from typing import List, Dict, Union, AsyncGenerator, Optional, Tuple
-import fastapi
 from fastapi.responses import StreamingResponse, Response
-from fastapi import HTTPException, APIRouter
-from fastapi import UploadFile, File, Form
+from fastapi import APIRouter
 from pydantic import BaseModel
 import httpx
 import json
 import logging
-import ast
-from .utils import Model, Provider, Token, Url
+from .utils import Token, Url
 from .error import get_error_response
-import tempfile
 import configparser
 
 router = APIRouter(prefix="/api/v1", tags=["对话"])
@@ -34,9 +30,9 @@ def trans_chunk(chunk: str) -> Tuple:
             chunk = chunk[6:]
         chunk_data = json.loads(chunk)
         chunk_short = {}
-        if len(chunk_data['choices'])>0:
+        if len(chunk_data['choices']) > 0:
             chunk_short = chunk_data['choices'][0].get('delta', {})
-            chunk_short["usage"] = chunk_data["usage"]    
+            chunk_short["usage"] = chunk_data["usage"]
             return chunk_short, "content"
         else:
             return "", "empty"
@@ -44,7 +40,9 @@ def trans_chunk(chunk: str) -> Tuple:
         logging.warning(f"Failed to parse chunk: {chunk}, error: {e}")
         return "", "empty"
 
-async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerator[str, None]:
+
+async def stream_generator(url: str, headers: Dict,
+                           data: Dict) -> AsyncGenerator[str, None]:
     """流生成器
 
     Args:
@@ -56,16 +54,18 @@ async def stream_generator(url: str, headers: Dict, data: Dict) -> AsyncGenerato
         str: streaming response in JSON format
     """
     async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
-        async with client.stream("POST", url, headers=headers, json=data) as response:
+        async with client.stream("POST", url, headers=headers,
+                                 json=data) as response:
             response.raise_for_status()
             role = ""
-            _token_num = 0
             async for chunk in response.aiter_lines():
-                new_chunk, _position = trans_chunk(chunk)
+                new_chunk, _ = trans_chunk(chunk)
                 if new_chunk:
                     role = new_chunk.get("role", role)
                     new_chunk["role"] = role
-                    yield "data: " + json.dumps(new_chunk, ensure_ascii=False)+"\n\n"
+                    yield "data: " + json.dumps(new_chunk,
+                                                ensure_ascii=False) + "\n\n"
+
 
 async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
     """非流生成器
@@ -85,29 +85,90 @@ async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
         data = response.json()['choices'][0]['message']
         return data
 
+
 class ChatMessage(BaseModel):
     role: str
     content: str
-    
+
+
 class ReqJson(BaseModel):
     """纯文本的请求体"""
     messages: List[ChatMessage]
     files: List[str] = []
-    
-ModelSection = Enum("ModelSection", {section.upper():section.lower() for section in config.sections()})
-Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled", "auto": "auto"})
 
-def _build_messages(_messages: List[Dict], _file_urls: List[str], model: str) -> List[Dict]:
+
+ModelSection = Enum("ModelSection", {section.upper(): section.lower()
+                                     for section in config.sections()})
+Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled",
+                             "auto": "auto"})
+
+
+async def _fetch_text_content(_text_urls) -> str:
+    """fetch text content"""
+    _text_contents = ""
+    for _url in _text_urls:
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(300.0)) as client:
+                response = await client.get(_url)
+                response.raise_for_status()
+                if _url.endswith(".txt"):
+                    response.encoding = response.charset_encoding or 'utf-8'
+                    _text_contents += response.text
+                elif _url.endswith(".csv"):
+                    import csv
+                    from io import StringIO
+                    content = response.text.lstrip('\ufeff')
+                    reader = csv.reader(StringIO(content))
+                    _text_contents += "\n".join(list(reader))
+                elif _url.endswith(".md"):
+                    import markdown
+                    content = response.text
+                    html_content = markdown.markdown(content)
+                    _text_contents += html_content
+                elif _url.endswith(".pdf"):
+                    import io
+                    import PyPDF2
+                    with io.BytesIO(response.content) as pdf_file:
+                        reader = PyPDF2.PdfReader(pdf_file)
+                        text = ""
+                        for page in reader.pages:
+                            text += page.extract_text() + "\n"
+                        _text_contents += text
+                elif _url.endswith(".docx"):
+                    import io
+                    import docx
+                    with io.BytesIO(response.content) as doc_file:
+                        doc = docx.Document(doc_file)
+                        _text_contents += "\n".join(
+                            [para.text for para in doc.paragraphs])
+        except Exception:
+            return get_error_response(f"无法从URL获取文件数据: {_url} ")
+    return _text_contents
+
+
+async def _build_messages(_messages: List[Dict], _file_urls: List[str],
+                          model: str) -> List[Dict]:
     """Construct the messages list with file handling if needed"""
     if _messages[-1]["role"] != "user":
         raise ValueError(f"模型 {model} 多模态输入时，最后一条消息必须是用户消息")
-    
-    _text_urls = [ f for f in _file_urls if f.endswith(('.txt','.csv','.doc','.docx','.md','.pdf'))]
-    _img_urls = [ f for f in _file_urls if f.endswith(('.png','.jpg','.gif','.bmp'))]
-    
+
+    _text_suffix = ('.txt', '.csv', '.doc', '.docx', '.md', '.pdf')
+    _text_urls = [f for f in _file_urls if f.endswith(_text_suffix)]
+    _img_suffix = ('.png', '.jpg', '.gif', '.bmp')
+    _img_urls = [f for f in _file_urls if f.endswith(_img_suffix)]
+    _other_urls = [
+        f for f in _file_urls
+        if (not f.endswith(_text_suffix)
+            and not f.endswith(_img_suffix))
+    ]
+
+    if _other_urls:
+        raise ValueError(f"上传了不允许的文件：{_other_urls}")
+
     if _text_urls and _img_urls:
-        raise ValueError(f"不允许同时上传文本文件和图片文件")
-    
+        raise ValueError(f"不允许同时上传文本文件和图片文件：\n{_text_urls = }\n{_img_urls = }")
+
     if _img_urls:
         _last_message_content = [
             {
@@ -120,15 +181,20 @@ def _build_messages(_messages: List[Dict], _file_urls: List[str], model: str) ->
             "type": "text"
         })
     elif _text_urls:
-        pass
-        
-        
+        _text_content = await _fetch_text_content(_text_urls)
+        _last_message_content = [{
+            "text": _messages[-1]["content"] + "\t基于以下内容回答: " + _text_content,
+            "type": "text"
+        }]
+
     return _messages[:-1] + [{
         "role": "user",
         "content": _last_message_content
     }]
 
-async def handle_stream_response(url: str, headers: Dict, data: Dict) -> StreamingResponse:
+
+async def handle_stream_response(url: str, headers: Dict,
+                                 data: Dict) -> StreamingResponse:
     """Handle streaming response generation"""
     return StreamingResponse(
         stream_generator(url, headers, data),
@@ -140,6 +206,7 @@ async def handle_stream_response(url: str, headers: Dict, data: Dict) -> Streami
             "Transfer-Encoding": "chunked"
         }
     )
+
 
 async def handle_nonstream_response(url: str, headers: Dict, data: Dict) -> Response:
     """Handle non-streaming response generation"""
@@ -155,6 +222,7 @@ async def handle_nonstream_response(url: str, headers: Dict, data: Dict) -> Resp
         media_type=JSON_MEDIA_TYPE
     )
 
+
 @router.post("/chat", response_model=None)
 async def chat(
     req_json: ReqJson,
@@ -165,7 +233,7 @@ async def chat(
 ) -> Union[StreamingResponse, Response]:
     """对外提供大模型聊天服务
     Args:
-        reqjson ReqJson: 请求体，包含消息和文件
+        req_json ReqJson: 请求体，包含消息和文件
         model str: 模型名称
         stream bool: 是否流式返回, 默认为True
         thinking bool: 是否深度思考, 默认为False
@@ -183,14 +251,18 @@ async def chat(
 
     model_name = model.value.lower()
     if model_name not in config.sections():
-        return get_error_response(f"模型 {model_name} 不在 DouBao 支持的模型列表中: {config.sections()}")
+        return get_error_response(
+            f"模型 {model_name} 不在 DouBao 支持的模型列表中: {config.sections()}")
 
     if config[model_name]["multi_modal"] == "false" and _files:
-        return get_error_response(f"模型 {model_name} 不支持多模态输入，请换一个模型：{config.sections()}")
+        return get_error_response(
+            f"模型 {model_name} 不支持多模态输入，请换一个模型：{config.sections()}")
 
     try:
-        messages = _build_messages(_messages, _files, model_name)
+        messages = await _build_messages(_messages, _files, model_name)
     except ValueError as e:
+        return get_error_response(str(e))
+    except Exception as e:
         return get_error_response(str(e))
 
     thinking_obj = {
@@ -198,7 +270,7 @@ async def chat(
     } if config[model_name]["thinking"] == "true" else None
 
     max_tokens = min(max_tokens, 16000)
-    
+
     data = {
         "model": "-".join([model_name, config[model_name]["version"]]),
         "messages": messages,
@@ -206,7 +278,7 @@ async def chat(
         "thinking": thinking_obj,
         "max_tokens": max_tokens
     }
-    
+
     if stream:
         data.update({
             "stream_options": {
@@ -214,14 +286,14 @@ async def chat(
                 "chunk_include_usage": True
             }
         })
-    
+
     logging.debug(f"Request data:\n {data}\n")
-    
+
     url = Url.DOUBAO.value
     token = Token.DOUBAO.value
     headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
+        "Accept": JSON_MEDIA_TYPE,
+        "Content-Type": JSON_MEDIA_TYPE,
         "Authorization": f"Bearer {token}"
     }
 
@@ -231,7 +303,7 @@ async def chat(
         return await handle_nonstream_response(url, headers, data)
     except Exception as e:
         return get_error_response(f"Error processing request: {e}")
-            
+
 
 @router.get("/chat_model_list") 
 async def chat_model_list() -> Response:
@@ -240,7 +312,8 @@ async def chat_model_list() -> Response:
         json.dumps({
             "code": 1,
             "msg": "success",
-            "data": {section: dict(config[section]) for section in config.sections()},
+            "data": {section: dict(config[section])
+                     for section in config.sections()},
             "status": 200
         }),
         status_code=200,
