@@ -97,24 +97,32 @@ class ReqJson(BaseModel):
 ModelSection = Enum("ModelSection", {section.upper():section.lower() for section in config.sections()})
 Thinking = Enum("Thinking", {"enabled": "enabled", "disabled": "disabled", "auto": "auto"})
 
-def _build_messages(_messages: List[Dict], _files: List[str], model: str) -> List[Dict]:
+def _build_messages(_messages: List[Dict], _file_urls: List[str], model: str) -> List[Dict]:
     """Construct the messages list with file handling if needed"""
-    if config[model]["multi_modal"] != "true" or not _files or not _messages:
-        return _messages
-        
     if _messages[-1]["role"] != "user":
         raise ValueError(f"模型 {model} 多模态输入时，最后一条消息必须是用户消息")
+    
+    _text_urls = [ f for f in _file_urls if f.endswith(('.txt','.csv','.doc','.docx','.md','.pdf'))]
+    _img_urls = [ f for f in _file_urls if f.endswith(('.png','.jpg','.gif','.bmp'))]
+    
+    if _text_urls and _img_urls:
+        raise ValueError(f"不允许同时上传文本文件和图片文件")
+    
+    if _img_urls:
+        _last_message_content = [
+            {
+                "image_url": {"url": url},
+                "type": "image_url"
+            } for url in _img_urls
+        ]
+        _last_message_content.append({
+            "text": _messages[-1]["content"],
+            "type": "text"
+        })
+    elif _text_urls:
+        pass
         
-    _last_message_content = [
-        {
-            "image_url": {"url": url},
-            "type": "image_url"
-        } for url in _files
-    ]
-    _last_message_content.append({
-        "text": _messages[-1]["content"],
-        "type": "text"
-    })
+        
     return _messages[:-1] + [{
         "role": "user",
         "content": _last_message_content

@@ -17,6 +17,7 @@ dependencies = [
     "pyttsx3>=2.98",
     "requests>=2.32.3",
     "uuid>=1.30",
+    "uv>=0.7.14",
     "uvicorn>=0.34.2",
     "websockets>=15.0.1",
 ]
