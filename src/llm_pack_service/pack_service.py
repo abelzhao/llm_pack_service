@@ -1,9 +1,8 @@
-from enum import Enum
-from fastapi import FastAPI
 import logging
 import os
 import sys
-
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from llm_pack_service.apis import chat, audio, image
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -28,9 +27,15 @@ app.include_router(chat.router)
 app.include_router(audio.router)
 app.include_router(image.router)
 
+
+# 挂载静态文件
+app.mount('/static', StaticFiles(directory='static'), name='static')
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello from llm-pack-service!"}
+
 
 def main():
     logging.debug(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")

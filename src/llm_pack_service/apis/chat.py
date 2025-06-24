@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Dict, Union, AsyncGenerator, Optional, Tuple
 from fastapi.responses import StreamingResponse, Response
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 import httpx
 import json
@@ -17,6 +17,23 @@ JSON_MEDIA_TYPE = "application/json"
 config = configparser.ConfigParser()
 config.read("model_config.ini")
 print(f"Config loaded: {config.sections()}")
+
+
+@router.get("/tw", response_model=None)
+async def temp_file(request: Request, file_name: str = "./test/data/audio_01.mp3") -> Union[StreamingResponse, Response]:
+    """把file_name所在的文件以音频形式返回
+    """
+    if not file_name.endswith('.mp3'):
+        return get_error_response("Invalid file type - .mp3 file required")
+    try:
+        with open(file_name, 'rb') as f:
+            audio_data = f.read()
+            return StreamingResponse(
+                iter([audio_data]),
+                media_type="audio/mp3"  # Adjust based on actual output format
+            )
+    except FileNotFoundError:
+        return get_error_response(f"File {file_name} not found")
 
 
 def trans_chunk(chunk: str) -> Tuple:
@@ -163,6 +180,10 @@ async def _build_messages(_messages: List[Dict], _file_urls: List[str],
             and not f.endswith(_img_suffix))
     ]
 
+    # if config[model_name]["multi_modal"] == "false" and _files:
+    #     return get_error_response(
+    #         f"模型 {model_name} 不支持多模态输入，请换一个模型：{config.sections()}")
+
     if _other_urls:
         raise ValueError(f"上传了不允许的文件：{_other_urls}")
 
@@ -253,10 +274,6 @@ async def chat(
     if model_name not in config.sections():
         return get_error_response(
             f"模型 {model_name} 不在 DouBao 支持的模型列表中: {config.sections()}")
-
-    if config[model_name]["multi_modal"] == "false" and _files:
-        return get_error_response(
-            f"模型 {model_name} 不支持多模态输入，请换一个模型：{config.sections()}")
 
     try:
         messages = await _build_messages(_messages, _files, model_name)
