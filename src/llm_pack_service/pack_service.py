@@ -42,8 +42,6 @@ async def health_check():
 
 
 def main():
-    logging.debug(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")
-    
     logging.info("Starting llm-pack-service...")
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8808, log_level="info")

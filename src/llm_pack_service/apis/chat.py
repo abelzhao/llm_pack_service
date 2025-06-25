@@ -16,8 +16,6 @@ JSON_MEDIA_TYPE = "application/json"
 
 config = configparser.ConfigParser()
 config.read("model_config.ini")
-print(f"Config loaded: {config.sections()}")
-
 
 @router.get("/tw", response_model=None)
 async def temp_file(request: Request, file_name: str = "./test/data/audio_01.mp3") -> Union[StreamingResponse, Response]:
