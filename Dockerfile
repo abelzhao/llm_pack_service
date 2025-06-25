@@ -1,4 +1,4 @@
-FROM python:3.11-slim as builder
+FROM docker.1ms.run/python:3.11-slim as builder
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ WORKDIR /app
 COPY . /app/
 
 # Install dependencies
-RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ . 
+RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ .
 
 # Expose application port
 EXPOSE 8808

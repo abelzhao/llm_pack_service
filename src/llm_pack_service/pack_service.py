@@ -36,6 +36,10 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 async def root():
     return {"message": "Hello from llm-pack-service!"}
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "version": "0.1.4"}
+
 
 def main():
     logging.debug(f"DOUBAO_API_KEY loaded: {'yes' if os.getenv('DOUBAO_API_KEY') else 'no'}")

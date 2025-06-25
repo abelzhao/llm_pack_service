@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   llm-pack-service:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8808:8808"
     working_dir: /app
@@ -10,4 +12,17 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-    restart: always
+      - PYTHONPATH=/app
+    volumes:
+      - ./:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8808/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G

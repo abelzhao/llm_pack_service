@@ -1,16 +1,44 @@
-# Ignore virtual environment
-.venv/
+# IDE
+.vscode/
+.idea/
 
-# Ignore build artifacts
+# Virtual environment
+.venv/
+venv/
+
+# Build artifacts
 build/
 dist/
 *.egg-info/
+*.egg
 
-# Ignore Python cache
+# Python cache
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.so
 *.pyd
 
-# Ignore environment files
+# Environment files
 .env
+.env.local
+.env.*.local
+
+# Test and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+test/
+
+# Logs
+*.log
+logs/
+
+# Documentation
+docs/_build/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Local development
+local/
