@@ -168,6 +168,9 @@ async def _fetch_text_content(_text_urls) -> str:
 async def _build_messages(_messages: List[Dict], _file_urls: List[str],
                           model: str) -> List[Dict]:
     """Construct the messages list with file handling if needed"""
+    if not _messages:
+        raise ValueError("message不可为空")
+    
     if _messages[-1]["role"] != "user":
         raise ValueError(f"模型 {model} 多模态输入时，最后一条消息必须是用户消息")
 
@@ -210,6 +213,8 @@ async def _build_messages(_messages: List[Dict], _file_urls: List[str],
             "text": _messages[-1]["content"] + "\t基于以下内容回答: " + _text_content,
             "type": "text"
         }]
+    else:
+        _last_message_content = _messages[-1]["content"]
 
     return _messages[:-1] + [{
         "role": "user",
