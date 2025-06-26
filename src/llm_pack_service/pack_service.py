@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from llm_pack_service.apis import chat, audio, image
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv()
+from dotenv import load_dotenv
 
 # load env
 load_dotenv()
