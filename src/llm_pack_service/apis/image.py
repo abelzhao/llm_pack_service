@@ -53,8 +53,8 @@ async def text_gen_image(
         prompt = req_dict['prompt']
     except Exception as e:
         return get_error_response(f"请求格式错误，请检查输入数据：{e}")
-    url = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_URL")
-    token = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_KEY")
+    url = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_URL", "https://ark.cn-beijing.volces.com/api/v3/images/generations")
+    token = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_KEY", "4bbc2539-be5c-4838-96dc-1b943f65967a")
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
