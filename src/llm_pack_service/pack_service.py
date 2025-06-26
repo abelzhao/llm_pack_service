@@ -56,7 +56,6 @@ def main():
     logging.info("Starting llm-pack-service...")
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8808, log_level="info")
-    logging.info("llm-pack-service started successfully.")
 
 
 if __name__ == "__main__":
