@@ -7,8 +7,11 @@ import httpx
 import json
 import os
 import logging
-
+from dotenv import load_dotenv
 from .error import get_error_response
+
+# load env
+load_dotenv()
 
 router = APIRouter(prefix="/api/v1", tags=["文字生成图像"])
 JSON_MEDIA_TYPE = "application/json"
