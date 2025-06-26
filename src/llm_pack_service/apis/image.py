@@ -68,6 +68,7 @@ async def text_gen_image(
         "seed": 123,
         "prompt": prompt
     }
+    logging.debug(f"Request url: {url}")
     logging.debug(f"Request data: {json.dumps(data)}")
     timeout = httpx.Timeout(60.0, connect=30.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
