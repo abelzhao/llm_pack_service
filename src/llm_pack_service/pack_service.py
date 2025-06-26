@@ -47,6 +47,12 @@ async def health_check():
 
 
 def main():
+    # Test environment variables
+    print("Environment Variables Test:")
+    print(f"LOG_LEVEL: {os.getenv('LOG_LEVEL')}")
+    print(f"ALLOW_ORIGIN: {os.getenv('ALLOW_ORIGIN')}")
+    print(f"DOUBAO_API_KEY: {'*****' if os.getenv('DOUBAO_API_KEY') else 'Not Found'}")
+    
     logging.info("Starting llm-pack-service...")
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8808, log_level="info")
