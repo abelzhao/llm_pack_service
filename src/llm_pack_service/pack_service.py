@@ -5,6 +5,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from llm_pack_service.apis import chat, audio, image
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv()
+
+# load env
+load_dotenv()
 
 # Configure logging for entire application
 logging.basicConfig(
@@ -35,6 +39,7 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 @app.get("/")
 async def root():
     return {"message": "Hello from llm-pack-service!"}
+
 
 @app.get("/health")
 async def health_check():
