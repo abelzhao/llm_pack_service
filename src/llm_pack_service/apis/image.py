@@ -63,7 +63,7 @@ async def text_gen_image(
         "Authorization": f"Bearer {token}"
     }
     data = {
-        "model": os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_MODEL"),
+        "model": os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_MODEL","doubao-seedream-3-0-t2i-250415"),
         "size": size.value,
         "response_format": response_format.value,
         "watermark": True,
