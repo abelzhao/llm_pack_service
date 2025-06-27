@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  develop-services_backend:
+    driver: bridge
+
 services:
   llm-pack-service:
     build: 
@@ -21,6 +25,8 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    networks:
+      - develop-services_backend
     deploy:
       resources:
         limits:
