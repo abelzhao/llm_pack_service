@@ -8,6 +8,7 @@ import asyncio
 import uuid
 import tempfile
 import os
+import aiofiles
 
 
 from .error import get_error_response, TaskSubmissionError, TaskQueryError
@@ -23,8 +24,8 @@ async def temp_mp3(request: Request, file_name: str = "./test/data/audio_01.mp3"
     if not file_name.endswith('.mp3'):
         return get_error_response("Invalid file type - .mp3 file required")
     try:
-        with open(file_name, 'rb') as f:
-            audio_data = f.read()
+        async with aiofiles.open(file_name, 'rb') as f:
+            audio_data = await f.read()
             return StreamingResponse(
                 iter([audio_data]),
                 media_type="audio/mp3"  # Adjust based on actual output format
@@ -107,13 +108,15 @@ async def auc(request: Request, audio: UploadFile) -> Union[StreamingResponse, R
     # Validate audio file
     if not audio.content_type.startswith('audio/'):
         return get_error_response("Invalid file type - audio file required")
+    
     # Read audio data
     try:
         audio_data = await audio.read()
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_file:
-            temp_file.write(audio_data)
-            temp_audio_path = temp_file.name
+        temp_audio_path = f"/tmp/{uuid.uuid4()}.mp3"
+        async with aiofiles.open(temp_audio_path, 'wb') as temp_file:
+            await temp_file.write(audio_data)
     except Exception as e:
+        logging.error(f"Error creating temporary audio file: {str(e)}")
         return get_error_response(f"Error saving audio file: {str(e)}")
     
     try:

@@ -24,8 +24,9 @@ async def temp_file(request: Request, file_name: str = "./test/data/audio_01.mp3
     if not file_name.endswith('.mp3'):
         return get_error_response("Invalid file type - .mp3 file required")
     try:
-        with open(file_name, 'rb') as f:
-            audio_data = f.read()
+        import aiofiles
+        async with aiofiles.open(file_name, 'rb') as f:
+            audio_data = await f.read()
             return StreamingResponse(
                 iter([audio_data]),
                 media_type="audio/mp3"  # Adjust based on actual output format
@@ -183,10 +184,6 @@ async def _build_messages(_messages: List[Dict], _file_urls: List[str],
     ]
 
     logging.debug(f"{_text_urls=}\n{_img_urls=}\n{_other_urls=}")
-
-    # if config[model_name]["multi_modal"] == "false" and _files:
-    #     return get_error_response(
-    #         f"模型 {model_name} 不支持多模态输入，请换一个模型：{config.sections()}")
 
     if _other_urls:
         raise ValueError(f"上传了不允许的文件：{_other_urls}")

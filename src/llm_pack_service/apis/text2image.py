@@ -18,7 +18,7 @@ JSON_MEDIA_TYPE = "application/json"
 
 
 class ReqJson(BaseModel):
-    """纯文本的请求体"""
+    """文本到图像的请求体"""
     prompt: str
 
 
@@ -56,14 +56,15 @@ async def text_gen_image(
         prompt = req_dict['prompt']
     except Exception as e:
         return get_error_response(f"请求格式错误，请检查输入数据：{e}")
-    url = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_URL", "https://ark.cn-beijing.volces.com/api/v3/images/generations")
-    token = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_KEY", "4bbc2539-be5c-4838-96dc-1b943f65967a")
+    url = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_URL")
+    token = os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_API_KEY")
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}"
     }
     data = {
-        "model": os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_MODEL","doubao-seedream-3-0-t2i-250415"),
+        "model": os.getenv("DOUBAO_TEXT_GENERATE_IMAGE_MODEL",
+                           "doubao-seedream-3-0-t2i-250415"),
         "size": size.value,
         "response_format": response_format.value,
         "watermark": True,
