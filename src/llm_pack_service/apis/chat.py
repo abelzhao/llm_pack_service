@@ -219,7 +219,11 @@ async def _build_messages(_messages: List[Dict], _file_urls: List[str],
 
 async def handle_stream_response(url: str, headers: Dict,
                                  data: Dict) -> StreamingResponse:
-    """Handle streaming response generation"""
+    """Handle streaming response generation
+    
+    Note: This function is async because it uses an async generator internally,
+    even though it doesn't directly await anything.
+    """
     return StreamingResponse(
         stream_generator(url, headers, data),
         media_type="text/event-stream",

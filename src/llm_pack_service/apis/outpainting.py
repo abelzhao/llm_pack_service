@@ -8,7 +8,7 @@ import logging
 import configparser
 import datetime
 from datetime import timezone
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 from fastapi.responses import Response
@@ -102,7 +102,20 @@ config.read("model_config.ini")
 
 
 class OutpaintingRequest(BaseModel):
-    image_urls: List[str]
+    binary_data_base64: Optional[List[str]] = None
+    image_urls: Optional[List[str]] = None
+    custom_prompt: str = ""
+
+    class Config:
+        extra = "allow"
+        
+    @validator('binary_data_base64', 'image_urls')
+    def validate_image_sources(cls, v, values):
+        binary_data = values.get('binary_data_base64', [])
+        image_urls = values.get('image_urls', [])
+        if bool(binary_data) == bool(image_urls):  # Both empty or both non-empty
+            raise ValueError("Either binary_data_base64 or image_urls must be provided, but not both")
+        return v
 
 
 @router.post("/outpainting", response_model=None)

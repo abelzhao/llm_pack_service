@@ -20,6 +20,9 @@ JSON_MEDIA_TYPE = "application/json"
 class ReqJson(BaseModel):
     """文本到图像的请求体"""
     prompt: str
+    
+    class Config:
+        extra = "allow"
 
 
 T2iImageSizes = Enum("T2iImageSizes", {
