@@ -1,13 +1,13 @@
 [project]
 name = "llm-pack-service"
-version = "0.1.4"
+version = "0.1.5"
 description = "integrate the apis of different llm to one api, which means: large language model package service"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
     {name = "zhaofei", email = "329362855@qq.com"}
 ]
-license = {text = "MIT"}
+license = "MIT"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -37,6 +37,7 @@ dependencies = [
     "aiofiles>=23.2.1",
     "pillow>=11.2.1",
     "volcengine>=1.0.191",
+    "pycryptodome>=3.9.9",
 ]
 
 [project.optional-dependencies]
