@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Dict, Union, AsyncGenerator, Optional, Tuple
 from fastapi.responses import StreamingResponse, Response
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import httpx
 import json
 import logging
@@ -103,14 +103,19 @@ async def nonstream_generator(url: str, headers: Dict, data: Dict) -> Dict:
 
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: str = Field(..., description="The role of the message sender (user/assistant)")
+    content: str = Field(..., description="The content of the message")
 
+class ChatResponse(BaseModel):
+    code: int = Field(..., description="Response status code")
+    msg: str = Field(..., description="Response message")
+    data: Dict = Field(..., description="Response data")
+    status: int = Field(..., description="HTTP status code")
 
 class ReqJson(BaseModel):
     """纯文本的请求体"""
-    messages: List[ChatMessage]
-    files: List[str] = []
+    messages: List[ChatMessage] = Field(..., description="List of chat messages")
+    files: List[str] = Field([], description="List of file URLs")
 
 
 ModelSection = Enum("ModelSection", {section.upper(): section.lower()
@@ -330,7 +335,7 @@ async def chat(
         return get_error_response(f"Error processing request: {e}")
 
 
-@router.get("/chat_model_list") 
+@router.get("/chat_model_list", response_model=ChatResponse) 
 async def chat_model_list() -> Response:
     """获取模型列表"""
     return Response(

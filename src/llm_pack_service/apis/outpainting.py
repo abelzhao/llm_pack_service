@@ -10,7 +10,7 @@ import datetime
 from datetime import timezone
 from typing import List, Optional
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from fastapi.responses import Response
 from dotenv import load_dotenv
 from .error import get_error_response

@@ -3,7 +3,7 @@ import os
 import sys
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from llm_pack_service.apis import chat, audio, text2image, outpainting
+from llm_pack_service.apis import chat, audio, text2image, outpainting, image2image
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -31,6 +31,7 @@ app.include_router(chat.router)
 app.include_router(audio.router)
 app.include_router(text2image.router)
 app.include_router(outpainting.router)
+app.include_router(image2image.router)
 
 
 # 挂载静态文件
