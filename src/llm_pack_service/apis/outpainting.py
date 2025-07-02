@@ -134,8 +134,8 @@ async def handle_outpainting(request: OutpaintingRequest) -> Response:
     }
     formatted_body = json.dumps(body_params)
 
-    access_key = os.getenv("PAINTING_ACCESS_KEY")
-    secret_key = os.getenv("PAINTING_SECRET_KEY")
+    access_key = os.getenv("VOLCEENGINE_ACCESS_KEY")
+    secret_key = os.getenv("VOLCEENGINE_SECRET_KEY")
 
     formatted_headers = sign_headers(access_key, secret_key, service,
                                      formatted_query, formatted_body)

@@ -36,7 +36,7 @@ ResponseFormat = Enum("ResponseFormat", {rf: rf for rf in ['url', 'b64_json']})
 # WaterMark = Enum("WaterMark", {wm:wm for wm in ['true','false']})
 
 
-@router.post("/t2i", response_model=None)
+@router.post("/txt2img", response_model=None)
 async def text_gen_image(
     req_json: ReqJson,
     size: T2iImageSizes,

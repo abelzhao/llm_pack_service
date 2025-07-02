@@ -2,12 +2,14 @@ from enum import Enum
 from typing import Union, Dict
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse, Response
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from .utils import Token, Url
 import httpx
 import json
 import os
 import logging
+from volcengine import visual
+from volcengine.visual.VisualService import VisualService
 from dotenv import load_dotenv
 from .error import get_error_response
 
@@ -31,22 +33,31 @@ class LogoInfo(BaseModel):
 
 class RequestJson(BaseModel):
     """图像到图像的请求体"""
-    req_key: str = Field("high_aes_scheduler_svr_controlnet_v2.0", description="Request key")
+    req_key: str = Field("img2img_comic_style", description="Request key")
+    sub_req_key: str = Field("img2img_comic_style_monet", description="Sub Request key")
     binary_data_base64: list[str] = Field([], description="Binary data in base64 format")
-    image_urls: list[str] = Field([], description="Image URLs")
+    image_urls: list[str] = Field(["http://localhost:8808/static/FFFFFFFF.png"], description="Image URLs")
     prompt: str = Field("", description="Prompt text")
     controlnet_args: ControlnetArgs = Field(ControlnetArgs(), description="Controlnet arguments")
     logo_info: LogoInfo = Field(LogoInfo(), description="Logo information")
+    return_url: bool = Field("true", description="Return Url")
 
     class Config:
         extra = "allow"
     
-    @validator('binary_data_base64', 'image_urls')
-    def validate_image_sources(cls, v, values):
-        binary_data = values.get('binary_data_base64', [])
-        image_urls = values.get('image_urls', [])
-        if bool(binary_data) == bool(image_urls):  # Both empty or both non-empty
-            raise ValueError("Either binary_data_base64 or image_urls must be provided, but not both")
+    @field_validator('binary_data_base64', 'image_urls')
+    def validate_image_sources(cls, v, info):
+        logging.debug(f"{info = }")
+        logging.debug(f"{v = }")
+        if isinstance(v, list) and not v:  # Skip validation if field is empty
+            return v
+        # Get the other field value from context
+        context = info.context
+        if context:
+            other_field = 'image_urls' if info.field_name == 'binary_data_base64' else 'binary_data_base64'
+            other_value = context.get(other_field, [])
+            if bool(v) and bool(other_value):
+                raise ValueError("Either binary_data_base64 or image_urls must be provided, but not both")
         return v
 
     
@@ -56,20 +67,25 @@ class ImageResponse(BaseModel):
     data: Dict = Field(..., description="Response data")
     status: int = Field(..., description="HTTP status code")
 
-@router.post("/image2image", response_model=ImageResponse)
-async def image2image(request_json: RequestJson) -> Response:
+@router.post("/img2img", response_model=ImageResponse)
+async def image2image(req_json: RequestJson) -> Response:
     """图像到图像的API接口"""
     try:
-        # TODO: Implement actual image2image processing
-        # For now return a mock response
+        # Pass context to validators
+        req_dict = req_json.model_dump()
+        logging.debug(f"{req_dict = }")
+        
+        visual_service = VisualService()
+        visual_service.set_ak(os.getenv("VOLCEENGINE_ACCESS_KEY"))
+        visual_service.set_sk(os.getenv("VOLCEENGINE_SECRET_KEY"))
+        
+        resp = visual_service.cv_process(req_dict)
+        
         return Response(
             json.dumps({
                 "code": 1,
                 "msg": "success",
-                "data": {
-                    "image_url": "https://example.com/generated-image.jpg",
-                    "status": "completed"
-                },
+                "data": resp,
                 "status": 200
             }),
             media_type="application/json"

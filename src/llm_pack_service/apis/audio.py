@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/v1", tags=["语音转文字"])
 JSON_MEDIA_TYPE = "application/json"
 
 @router.get("/tw", response_model=None)
-async def temp_mp3(request: Request, file_name: str = "./test/data/audio_01.mp3") -> Union[StreamingResponse, Response]:
+async def temp_mp3(file_name: str = "./test/data/audio_01.mp3") -> Union[StreamingResponse, Response]:
     """把file_name所在的文件以音频形式返回
     """
     if not file_name.endswith('.mp3'):

@@ -36,6 +36,7 @@ dependencies = [
     "datetime>=5.5",
     "aiofiles>=23.2.1",
     "pillow>=11.2.1",
+    "volcengine>=1.0.191",
 ]
 
 [project.optional-dependencies]
