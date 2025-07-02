@@ -14,15 +14,19 @@ RUN echo "deb http://mirrors.aliyun.com/debian/ bookworm main non-free contrib" 
 
 # Copy all files needed for build
 WORKDIR /app
-
-RUN /venv/bin/pip install -i https://mirrors.aliyun.com/pypi/simple/ uv 
-
 # Install dependencies
 COPY . /app/
-RUN /venv/bin/uv sync 
+
+RUN /venv/bin/pip install -i https://mirrors.aliyun.com/pypi/simple/ .
+
+
+# ENV UV_HTTP_TIMEOUT=120
+# RUN /venv/bin/uv sync --index-url https://mirrors.aliyun.com/pypi/simple/ && \
+#     uv pip install .
 
 # Expose application port
 EXPOSE 8808
 
-# Run the application
-CMD ["uvicorn", "llm_pack_service:app", "--host", "0.0.0.0", "--port", "8808"]
+# Set Python path and run the application
+ENV PYTHONPATH=/app
+CMD ["/venv/bin/uvicorn", "llm_pack_service:app", "--host", "0.0.0.0", "--port", "8808"]
