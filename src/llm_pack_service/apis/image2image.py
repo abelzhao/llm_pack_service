@@ -60,12 +60,13 @@ class RequestJson(BaseModel):
                 raise ValueError("Either binary_data_base64 or image_urls must be provided, but not both")
         return v
 
-    
+
 class ImageResponse(BaseModel):
     code: int = Field(..., description="Response status code")
     msg: str = Field(..., description="Response message")
     data: Dict = Field(..., description="Response data")
     status: int = Field(..., description="HTTP status code")
+
 
 @router.post("/img2img", response_model=ImageResponse)
 async def image2image(req_json: RequestJson) -> Response:
