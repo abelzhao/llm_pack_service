@@ -1,22 +1,18 @@
-from enum import Enum
-from typing import Union, Dict
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse, Response
-from pydantic import BaseModel, Field, field_validator
-from .utils import Token, Url
-import httpx
-import json
 import os
+import json
 import logging
-from volcengine import visual
+from fastapi import APIRouter
+from fastapi.responses import Response
+from pydantic import BaseModel, Field, field_validator
 from volcengine.visual.VisualService import VisualService
 from dotenv import load_dotenv
+from .utils import ImageResponse
 from .error import get_error_response
 
 # load env
 load_dotenv()
 
-router = APIRouter(prefix="/api/v1", tags=["图像生成图像"])
+router = APIRouter(prefix="/api/v1", tags=["智能图像"])
 JSON_MEDIA_TYPE = "application/json"
 
 
@@ -38,9 +34,9 @@ class RequestJson(BaseModel):
     binary_data_base64: list[str] = Field([], description="Binary data in base64 format")
     image_urls: list[str] = Field(["http://localhost:8808/static/FFFFFFFF.png"], description="Image URLs")
     prompt: str = Field("", description="Prompt text")
-    controlnet_args: ControlnetArgs = Field(ControlnetArgs(), description="Controlnet arguments")
+    controlnet_args: ControlnetArgs = Field(ControlnetArgs(type="canny", strength=0.6, binary_data_index=0), description="Controlnet arguments")
     logo_info: LogoInfo = Field(LogoInfo(), description="Logo information")
-    return_url: bool = Field("true", description="Return Url")
+    return_url: bool = Field(True, description="Return Url")
 
     class Config:
         extra = "allow"
@@ -59,13 +55,6 @@ class RequestJson(BaseModel):
             if bool(v) and bool(other_value):
                 raise ValueError("Either binary_data_base64 or image_urls must be provided, but not both")
         return v
-
-
-class ImageResponse(BaseModel):
-    code: int = Field(..., description="Response status code")
-    msg: str = Field(..., description="Response message")
-    data: Dict = Field(..., description="Response data")
-    status: int = Field(..., description="HTTP status code")
 
 
 @router.post("/img2img", response_model=ImageResponse)
@@ -92,13 +81,4 @@ async def image2image(req_json: RequestJson) -> Response:
             media_type="application/json"
         )
     except Exception as e:
-        return Response(
-            json.dumps({
-                "code": 0,
-                "msg": str(e),
-                "data": {},
-                "status": 500
-            }),
-            status_code=500,
-            media_type="application/json"
-        )
+        return get_error_response(str(e))

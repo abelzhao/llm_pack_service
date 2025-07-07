@@ -15,7 +15,7 @@ def get_error_response(message: str) -> Response:
         "code": 0,
         "msg": message,
         "data": {},
-        "status": 404
+        "status": 500
     }
     return Response(
         json.dumps(json_data),

@@ -1,25 +1,23 @@
 import os
-import sys
-import hmac
+import io
 import json
-import httpx
-import hashlib
+import base64
 import logging
-import configparser
-import datetime
-from datetime import timezone
-from typing import List, Optional
+from PIL import Image
 from fastapi import APIRouter
-from pydantic import BaseModel, validator
-from fastapi.responses import Response
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from typing import List
+from .utils import ImageResponse, url_to_base64
 from .error import get_error_response
+from fastapi.responses import Response
+from volcengine.visual.VisualService import VisualService
 
 # load env
 load_dotenv()
 
 
-router = APIRouter(prefix="/api/v1", tags=["智能扩图"])
+router = APIRouter(prefix="/api/v1", tags=["智能图像"])
 JSON_MEDIA_TYPE = "application/json"
 
 
@@ -61,13 +59,22 @@ def expand_image_with_mask(image_path, top, bottom, left, right):
     return img_base64, mask_base64
 
 
+class OutPaintingRatio(BaseModel):
+    """图像扩展尺寸配置"""
+    top: float = Field(0.1, gt=0, le=1, description="上方扩展像素数")
+    bottom: float = Field(0.1, gt=0, le=1, description="下方扩展像素数")
+    left: float = Field(0.1, gt=0, le=1, description="左侧扩展像素数")
+    right: float = Field(0.1, gt=0, le=1, description="右侧扩展像素数")
+
+
 class RequestJson(BaseModel):
     """智能扩图的请求体"""
-    req_key: str = Field("i2i_outpainting", description="请求Key")
-    binary_data_base64: list[str] = Field([], description="二进制BASE64图片")
-    image_urls: list[str] = Field([], description="图片URLs")
-    scale: int = Field(7, description="取值范围[1, 20]，影响文本描述的程度")
-    seed: int = Field(0, description="随机种子")
+    image_urls: List[str] = Field([
+            "https://img.saihuitong.com/2900/img/104581/large/18e2b244234.jpg"
+        ], description="图片URLs")
+    custom_prompt: str = Field("", description="提示词")
+    out_painting_ratio: OutPaintingRatio = Field(OutPaintingRatio(top=.1, bottom=.1, left=.1, right=.1), 
+                                                 description="图像扩展尺寸")
 
 
 @router.post("/out_painting", response_model=ImageResponse)
@@ -75,7 +82,19 @@ async def handle_out_painting(req_json: RequestJson) -> Response:
     """智能扩图的API接口"""
     try:
         # Pass context to validators
-        req_dict = req_json.model_dump()
+        # req_json = req_json.model_dump()
+        logging.debug(f"{req_json = }")
+        
+        req_dict = {
+            "req_key": "i2i_outpainting",
+            "image_urls": req_json.image_urls,
+            "scale": 7.0,
+            "seed": 3,
+            "custom_prompt": req_json.custom_prompt,
+            "return_url": True,
+            "steps": 30             
+        }
+        req_dict.update(req_json.out_painting_ratio.model_dump())
         logging.debug(f"{req_dict = }")
         
         visual_service = VisualService()
@@ -88,19 +107,12 @@ async def handle_out_painting(req_json: RequestJson) -> Response:
             json.dumps({
                 "code": 1,
                 "msg": "success",
-                "data": resp,
+                "data": {
+                        "image_urls":resp["data"]["image_urls"]
+                    },
                 "status": 200
             }),
             media_type="application/json"
         )
     except Exception as e:
-        return Response(
-            json.dumps({
-                "code": 0,
-                "msg": str(e),
-                "data": {},
-                "status": 500
-            }),
-            status_code=500,
-            media_type="application/json"
-        )
+        return get_error_response(str(e))
