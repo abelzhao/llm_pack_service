@@ -8,17 +8,21 @@ from fastapi import APIRouter
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import List
-from .utils import ImageResponse, url_to_base64
+from .utils import ImageResponse
 from .error import get_error_response
 from fastapi.responses import Response
 from volcengine.visual.VisualService import VisualService
+from volcengine.Credentials import Credentials
 
 # load env
 load_dotenv()
 
-
 router = APIRouter(prefix="/api/v1", tags=["智能图像"])
 JSON_MEDIA_TYPE = "application/json"
+
+visual_service = VisualService()
+visual_service.set_ak(os.getenv("VOLCEENGINE_ACCESS_KEY"))
+visual_service.set_sk(os.getenv("VOLCEENGINE_SECRET_KEY"))
 
 
 def expand_image_with_mask(image_path, top, bottom, left, right):
@@ -67,7 +71,7 @@ class OutPaintingRatio(BaseModel):
     right: float = Field(0.1, gt=0, le=1, description="右侧扩展像素数")
 
 
-class RequestJson(BaseModel):
+class OutPaintingRequestJson(BaseModel):
     """智能扩图的请求体"""
     image_urls: List[str] = Field([
             "https://img.saihuitong.com/2900/img/104581/large/18e2b244234.jpg"
@@ -78,7 +82,7 @@ class RequestJson(BaseModel):
 
 
 @router.post("/out_painting", response_model=ImageResponse)
-async def handle_out_painting(req_json: RequestJson) -> Response:
+async def handle_out_painting(req_json: OutPaintingRequestJson) -> Response:
     """智能扩图的API接口"""
     try:
         # Pass context to validators
@@ -97,9 +101,53 @@ async def handle_out_painting(req_json: RequestJson) -> Response:
         req_dict.update(req_json.out_painting_ratio.model_dump())
         logging.debug(f"{req_dict = }")
         
-        visual_service = VisualService()
-        visual_service.set_ak(os.getenv("VOLCEENGINE_ACCESS_KEY"))
-        visual_service.set_sk(os.getenv("VOLCEENGINE_SECRET_KEY"))
+        resp = visual_service.cv_process(req_dict)
+        
+        return Response(
+            json.dumps({
+                "code": 1,
+                "msg": "success",
+                "data": {
+                        "image_urls":resp["data"]["image_urls"]
+                    },
+                "status": 200
+            }),
+            media_type="application/json"
+        )
+    except Exception as e:
+        return get_error_response(str(e))
+    
+
+cred = Credentials(
+    ak=os.getenv("VOLCEENGINE_ACCESS_KEY"),
+    sk=os.getenv("VOLCEENGINE_SECRET_KEY"),
+    service="visual",
+    region=os.getenv("VOLCEENGINE_REGION", "cn-north-1"),
+    session_token=os.getenv("VOLCEENGINE_SESSION_TOKEN", "")
+)
+
+
+class ImgEnhanceRequestJson(BaseModel):
+    """智能增图的请求体"""
+    image_urls: List[str] = Field([
+            "https://img.saihuitong.com/2900/img/104581/large/18e2b244234.jpg"
+        ], description="图片URLs")
+    
+    
+@router.post("/img_enhance", response_model=ImageResponse)
+async def handle_img_enhace(req_json: ImgEnhanceRequestJson) -> Response:
+    """智能增图的API接口"""
+    try:
+        # Pass context to validators
+        # req_json = req_json.model_dump()
+        logging.debug(f"{req_json = }")
+        
+        req_dict = {
+            "req_key": "lens_lqir",
+            "image_urls": req_json.image_urls,
+            "return_url": True,
+        }
+        logging.debug(f"{req_dict = }")
         
         resp = visual_service.cv_process(req_dict)
         
