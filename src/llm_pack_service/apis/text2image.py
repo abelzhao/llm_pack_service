@@ -39,8 +39,8 @@ ResponseFormat = Enum("ResponseFormat", {rf: rf for rf in ['url', 'b64_json']})
 @router.post("/txt2img", response_model=None)
 async def text_gen_image(
     req_json: ReqJson,
-    size: T2iImageSizes,
-    response_format: ResponseFormat,
+    size: T2iImageSizes, # type: ignore
+    response_format: ResponseFormat, # type: ignore
     guidance_scale: float = 2.5,
     watermark: bool = False
 ) -> Union[StreamingResponse, Response]:

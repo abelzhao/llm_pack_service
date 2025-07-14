@@ -4,10 +4,10 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
-from volcengine.visual.VisualService import VisualService
 from dotenv import load_dotenv
 from .utils import ImageResponse
 from .error import get_error_response
+from volcengine.visual.VisualService import VisualService # type: ignore
 
 # load env
 load_dotenv()

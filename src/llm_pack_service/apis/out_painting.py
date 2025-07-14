@@ -8,10 +8,10 @@ from fastapi import APIRouter
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import List
-from .utils import ImageResponse, url_to_base64
+from .utils import ImageResponse
 from .error import get_error_response
 from fastapi.responses import Response
-from volcengine.visual.VisualService import VisualService
+from volcengine.visual.VisualService import VisualService # type: ignore
 
 # load env
 load_dotenv()

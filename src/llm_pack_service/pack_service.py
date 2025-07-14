@@ -21,7 +21,7 @@ app = FastAPI(title="LLM Pack Service")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("ALLOW_ORIGIN")],  # Allow all origins for development; restrict in production
+    allow_origins=[os.getenv("ALLOW_ORIGIN") or "*"],  # Allow all origins for development; restrict in production
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods for development; restrict in production
     allow_headers=["*"],  # Allow all headers for development; restrict in production
